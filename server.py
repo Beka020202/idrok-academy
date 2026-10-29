@@ -23,7 +23,7 @@ from pathlib import Path
 from lessons import ALL_LESSONS, COURSES
 from progress import buy_avatar, claim_quest, complete_lesson, level_of, normalize, open_chest
 
-DB_PATH = Path(__file__).with_name("kodla.db")
+DB_PATH = Path(__import__("os").environ.get("KODLA_DB_PATH", str(Path(__file__).with_name("kodla.db"))))
 DEFAULT_PORT = 8765
 TEACHER_LOGIN = "ustoz"
 DEFAULT_TEACHER_PASSWORD = "ustoz123"
@@ -254,10 +254,9 @@ def main():
     print(f"  Shu kompyuterda / На этом компьютере:  http://127.0.0.1:{args.port}")
     print(f"  Wi‑Fi dagi qurilmalar / Устройства в Wi‑Fi:  http://{ip}:{args.port}")
     if status == "created":
-        pw = args.teacher_password or DEFAULT_TEACHER_PASSWORD
-        print(f"  Ustoz akkaunti / Аккаунт учителя:  login «{TEACHER_LOGIN}», parol «{pw}»")
+        print(f"  Ustoz akkaunti / Аккаунт учителя: login «{TEACHER_LOGIN}»")
         if not args.teacher_password:
-            print("  ⚠ Parolni o‘zgartiring / Смените пароль:  python server.py --teacher-password YANGI")
+            print("  ⚠ Parol standart qiymatda. Uni o‘zgartiring / Смените пароль учителя.")
     elif status == "changed":
         print("  Ustoz paroli yangilandi / Пароль учителя обновлён")
     print("  To‘xtatish / Остановить:  Ctrl+C")

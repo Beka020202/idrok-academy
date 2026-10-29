@@ -8,6 +8,7 @@ Ishga tushirish / Запуск:
 """
 
 import json
+import os
 import random
 import sys
 import threading
@@ -21,7 +22,7 @@ from lessons import ALL_LESSONS, COURSES, PLAYGROUND_START, T, run_python
 from progress import (AVATARS, GOAL, QUESTS, buy_avatar, claim_quest, complete_lesson, empty_state,
                       last_week, level_of, normalize, open_chest, quest_progress)
 
-WEB_PORT = 8550
+WEB_PORT = int(os.environ.get("PORT", "8550"))
 DEFAULT_SERVER = "http://127.0.0.1:8765"
 PREFS_KEY = "kodla.prefs"
 

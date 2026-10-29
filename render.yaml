@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: idrok-academy
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python deploy.py
+    healthCheckPath: /
+    envVars:
+      - key: TEACHER_PASSWORD
+        sync: false
+      - key: KODLA_DB_PATH
+        value: /var/data/kodla.db
