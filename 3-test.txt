@@ -1,0 +1,17 @@
+
+::group::✅ Passing tests
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: progress first lesson gives XP, gems and starts streak
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: progress review gives 5 XP and no gems; streak grows next day
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: progress streak resets after a missed day
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: progress daily quests reset on a new day and can be claimed once
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: progress chest opens only when the course is finished
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: progress avatar shop
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: progress JSON round trip keeps server keys
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: progress dayBefore handles month and year changes
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons every lesson has exactly one practice step and unique id
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons HTML/CSS/JS checks: start code fails, a correct answer passes
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons Python checks use program output
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/widget_test.dart: offline mode: every tab and a full lesson
+::endgroup::
+
+🎉 12 tests passed.
