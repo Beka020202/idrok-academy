@@ -12,7 +12,10 @@ Future<void> tapText(WidgetTester tester, String text, {bool contains = false}) 
   final f = contains ? find.textContaining(text) : find.text(text);
   expect(f, findsWidgets, reason: text);
   await tester.ensureVisible(f.first);
+  // iOS uslubidagi "qaytish" (bounce) tugashini kutamiz — bu vaqtda bosish e'tiborsiz qoladi.
+  // Ждём окончания «отскока» прокрутки — во время него нажатия игнорируются.
   await tester.pump(const Duration(milliseconds: 100));
+  await tester.pump(const Duration(milliseconds: 1500));
   await tester.tap(f.first);
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 600));
