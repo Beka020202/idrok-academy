@@ -1,13 +1,19 @@
 # GitHub ilovani o‘zi tekshiradi va quradi / GitHub сам проверяет и собирает приложение.
 # Natija: Actions → oxirgi ishga tushirish → Artifacts → kodla-android (APK).
 # Результат: Actions → последний запуск → Artifacts → kodla-android (APK).
+# Loglar "ci-logs-android" / "ci-logs-ios" tarmoqlariga ham saqlanadi.
+# Логи также сохраняются в ветки "ci-logs-android" / "ci-logs-ios".
 
 name: Build Kodla app
 
 on:
   push:
+    branches: [main]
     paths: ["app/**", ".github/workflows/build.yml"]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   android:
@@ -15,10 +21,11 @@ jobs:
     defaults:
       run:
         working-directory: app
+        shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
@@ -28,24 +35,34 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Android/iOS papkalarini yaratish / создать папки платформ
-        run: python3 tool/setup_platforms.py
+      - name: Prepare logs
+        run: mkdir -p "$GITHUB_WORKSPACE/ci-logs" && flutter --version 2>&1 | tee "$GITHUB_WORKSPACE/ci-logs/0-flutter-version.txt"
 
-      - run: flutter pub get
+      - name: Android/iOS papkalarini yaratish / создать папки платформ
+        run: set -o pipefail; python3 tool/setup_platforms.py 2>&1 | tee "$GITHUB_WORKSPACE/ci-logs/1-setup.txt"
 
       - name: Kodni tekshirish / проверка кода
-        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+        run: set -o pipefail; flutter analyze --no-fatal-infos --no-fatal-warnings 2>&1 | tee "$GITHUB_WORKSPACE/ci-logs/2-analyze.txt"
 
       - name: Testlar / тесты
-        run: flutter test
+        run: set -o pipefail; flutter test 2>&1 | tee "$GITHUB_WORKSPACE/ci-logs/3-test.txt"
 
       - name: APK yig‘ish / сборка APK
-        run: flutter build apk --release
+        run: set -o pipefail; flutter build apk --release 2>&1 | tee "$GITHUB_WORKSPACE/ci-logs/4-build-apk.txt"
 
       - uses: actions/upload-artifact@v4
         with:
           name: kodla-android
           path: app/build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Save logs
+        if: always()
+        working-directory: ${{ github.workspace }}/ci-logs
+        run: |
+          echo "run ${{ github.run_id }} · ${{ job.status }}" > STATUS.txt
+          git init -q && git checkout -q -b logs
+          git add -A && git -c user.name=ci -c user.email=ci@localhost commit -qm "android logs ${{ github.run_id }}"
+          git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" HEAD:ci-logs-android
 
   ios:
     # iPhone uchun kod kompilyatsiya bo‘lishini tekshiradi (imzosiz).
@@ -54,14 +71,29 @@ jobs:
     defaults:
       run:
         working-directory: app
+        shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
 
-      - run: python3 tool/setup_platforms.py
-      - run: flutter pub get
-      - run: flutter build ios --release --no-codesign
+      - name: Prepare logs
+        run: mkdir -p "$GITHUB_WORKSPACE/ci-logs"
+
+      - name: Platforms
+        run: set -o pipefail; python3 tool/setup_platforms.py 2>&1 | tee "$GITHUB_WORKSPACE/ci-logs/1-setup.txt"
+
+      - name: Build iOS (no signing)
+        run: set -o pipefail; flutter build ios --release --no-codesign 2>&1 | tee "$GITHUB_WORKSPACE/ci-logs/2-build-ios.txt"
+
+      - name: Save logs
+        if: always()
+        working-directory: ${{ github.workspace }}/ci-logs
+        run: |
+          echo "run ${{ github.run_id }} · ${{ job.status }}" > STATUS.txt
+          git init -q && git checkout -q -b logs
+          git add -A && git -c user.name=ci -c user.email=ci@localhost commit -qm "ios logs ${{ github.run_id }}"
+          git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" HEAD:ci-logs-ios
