@@ -7,6 +7,7 @@
 //  Бренд: только оранжевый, жёлтый, чёрный, белый (+ нейтральные серые между ними).
 // ============================================================================
 
+import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 
 // ---------------------------------------------------------------- shriftlar / шрифты
