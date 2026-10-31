@@ -1,12 +1,45 @@
+# Render Blueprint: ikki xizmat / два сервиса.
+#   kodla-api    — akkauntlar, reyting, ustoz paneli (ma’lumotlar diskda saqlanadi)
+#                  аккаунты, рейтинг, панель учителя (данные хранятся на диске)
+#   kodla-runner — o‘quvchilarning Python kodini bajaradi; parol va bazasi YO‘Q
+#                  выполняет Python-код учеников; паролей и базы НЕТ
+#
+# Render → New → Blueprint → shu repozitoriyni tanlang / выберите этот репозиторий.
+# So‘ng TEACHER_PASSWORD ni kiriting (kamida 12 belgi) / затем введите TEACHER_PASSWORD (минимум 12 символов).
+
 services:
   - type: web
-    name: idrok-academy
+    name: kodla-api
     runtime: python
+    rootDir: server
+    plan: starter            # disk uchun pullik reja kerak / для диска нужен платный план
     buildCommand: pip install -r requirements.txt
-    startCommand: python deploy.py
-    healthCheckPath: /
+    startCommand: python server.py
+    healthCheckPath: /api/ping
     envVars:
       - key: TEACHER_PASSWORD
         sync: false
       - key: KODLA_DB_PATH
         value: /var/data/kodla.db
+      - key: KODLA_DISABLE_RUN
+        value: "1"
+      - key: TZ
+        value: Asia/Tashkent
+      - key: PYTHON_VERSION
+        value: 3.12.7
+    disk:
+      name: kodla-data
+      mountPath: /var/data
+      sizeGB: 1
+
+  - type: web
+    name: kodla-runner
+    runtime: python
+    rootDir: server
+    plan: free               # 15 daqiqa ishlatilmasa uxlaydi / засыпает через 15 минут простоя
+    buildCommand: pip install -r requirements.txt
+    startCommand: python runner.py
+    healthCheckPath: /api/ping
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7

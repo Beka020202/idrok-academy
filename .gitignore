@@ -1,0 +1,26 @@
+# Ma’lumotlar bazasi — o‘quvchilar ma’lumotlari! / база данных — данные учеников!
+*.db
+*.db-wal
+*.db-shm
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Flutter
+app/.dart_tool/
+app/build/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/pubspec.lock
+app/android/
+app/ios/
+app/.metadata
+*.iml
+.idea/
+
+# Imzo kalitlari — hech qachon yuklamang / ключи подписи — никогда не загружайте
+*.jks
+*.keystore
+key.properties

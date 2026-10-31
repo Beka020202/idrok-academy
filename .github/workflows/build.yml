@@ -1,0 +1,67 @@
+# GitHub ilovani o‘zi tekshiradi va quradi / GitHub сам проверяет и собирает приложение.
+# Natija: Actions → oxirgi ishga tushirish → Artifacts → kodla-android (APK).
+# Результат: Actions → последний запуск → Artifacts → kodla-android (APK).
+
+name: Build Kodla app
+
+on:
+  push:
+    paths: ["app/**", ".github/workflows/build.yml"]
+  workflow_dispatch:
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Android/iOS papkalarini yaratish / создать папки платформ
+        run: python3 tool/setup_platforms.py
+
+      - run: flutter pub get
+
+      - name: Kodni tekshirish / проверка кода
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Testlar / тесты
+        run: flutter test
+
+      - name: APK yig‘ish / сборка APK
+        run: flutter build apk --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kodla-android
+          path: app/build/app/outputs/flutter-apk/app-release.apk
+
+  ios:
+    # iPhone uchun kod kompilyatsiya bo‘lishini tekshiradi (imzosiz).
+    # Проверяет, что код собирается для iPhone (без подписи).
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: python3 tool/setup_platforms.py
+      - run: flutter pub get
+      - run: flutter build ios --release --no-codesign

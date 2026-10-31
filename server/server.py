@@ -5,6 +5,13 @@ Ishga tushirish / Запуск:
     python server.py
     python server.py --teacher-password YangiParol   # ustoz parolini o‘zgartirish / сменить пароль учителя
 
+Muhit o‘zgaruvchilari / Переменные окружения (Render):
+    PORT               — port (Render o‘zi beradi / Render задаёт сам)
+    TEACHER_PASSWORD   — ustoz paroli / пароль учителя
+    KODLA_DB_PATH      — ma’lumotlar bazasi fayli / файл базы данных
+    KODLA_DISABLE_RUN  — "1" bo‘lsa, /api/run o‘chiriladi (Python alohida runner.py da ishlaydi)
+                         "1" — отключить /api/run (Python работает в отдельном runner.py)
+
 Ma’lumotlar shu papkadagi kodla.db fayliga saqlanadi.
 Данные хранятся в файле kodla.db в этой папке.
 """
@@ -12,6 +19,7 @@ Ma’lumotlar shu papkadagi kodla.db fayliga saqlanadi.
 import argparse
 import hashlib
 import json
+import os
 import secrets
 import socket
 import sqlite3
@@ -22,25 +30,49 @@ from pathlib import Path
 
 from lessons import ALL_LESSONS, COURSES
 from progress import buy_avatar, claim_quest, complete_lesson, level_of, normalize, open_chest
+from runner import client_ip, handle_run
 
-DB_PATH = Path(__import__("os").environ.get("KODLA_DB_PATH", str(Path(__file__).with_name("kodla.db"))))
+DB_PATH = Path(os.environ.get("KODLA_DB_PATH", str(Path(__file__).with_name("kodla.db"))))
+RUN_ENABLED = os.environ.get("KODLA_DISABLE_RUN", "") not in ("1", "true", "yes")
+TOKEN_DAYS = 120          # kirish muddati / срок действия входа
+LOGIN_TRIES = 15          # 10 daqiqada bitta IP dan / с одного IP за 10 минут
 DEFAULT_PORT = 8765
 TEACHER_LOGIN = "ustoz"
 DEFAULT_TEACHER_PASSWORD = "ustoz123"
 LESSON_ORDER = [l["id"] for c in COURSES for l in c["lessons"]]
 
 _write_lock = threading.Lock()
+_login_lock = threading.Lock()
+_login_hits = {}
+
+
+def login_allowed(ip):
+    """Parolni taxmin qilishdan himoya / защита от подбора пароля."""
+    now = time.time()
+    with _login_lock:
+        hits = [t for t in _login_hits.get(ip, []) if now - t < 600]
+        ok = len(hits) < LOGIN_TRIES
+        if ok:
+            hits.append(now)
+        _login_hits[ip] = hits
+        if len(_login_hits) > 5000:
+            for k in [k for k, v in _login_hits.items() if not v or now - v[-1] > 600]:
+                _login_hits.pop(k, None)
+        return ok
 
 
 # ---------------------------------------------------------------- ma’lumotlar bazasi / база данных
 def db():
     conn = sqlite3.connect(DB_PATH, timeout=10)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys=ON")
     return conn
 
 
 def init_db():
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with db() as conn:
+        conn.execute("PRAGMA journal_mode=WAL")
         conn.executescript("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -116,8 +148,8 @@ class Handler(BaseHTTPRequestHandler):
         auth = self.headers.get("Authorization", "")
         if not auth.startswith("Bearer "):
             return None
-        return conn.execute("SELECT u.* FROM tokens t JOIN users u ON u.id=t.user_id WHERE t.token=?",
-                            (auth[7:].strip(),)).fetchone()
+        return conn.execute("SELECT u.* FROM tokens t JOIN users u ON u.id=t.user_id WHERE t.token=? AND t.created>?",
+                            (auth[7:].strip(), time.time() - TOKEN_DAYS * 86400)).fetchone()
 
     def new_token(self, conn, user_id):
         token = secrets.token_urlsafe(32)
@@ -127,7 +159,7 @@ class Handler(BaseHTTPRequestHandler):
     # ---- GET
     def do_GET(self):
         path = self.path.split("?")[0]
-        if path == "/api/ping":
+        if path in ("/", "/api/ping"):
             return self.send_json(200, {"ok": True, "app": "kodla"})
         with db() as conn:
             user = self.current_user(conn)
@@ -165,7 +197,15 @@ class Handler(BaseHTTPRequestHandler):
         if data is None:
             return self.send_json(400, {"error": "bad_json"})
 
+        if path == "/api/run":
+            if not RUN_ENABLED:
+                return self.send_json(404, {"error": "not_found"})
+            status, res = handle_run(data, client_ip(self))
+            return self.send_json(status, res)
+
         if path in ("/api/register", "/api/login"):
+            if not login_allowed(client_ip(self)):
+                return self.send_json(429, {"error": "too_many"})
             username = str(data.get("username", "")).strip()
             password = str(data.get("password", ""))
             if len(username) < 3 or len(password) < 4 or len(username) > 30:
@@ -242,9 +282,15 @@ def lan_ip():
 
 def main():
     ap = argparse.ArgumentParser(description="Kodla local server")
-    ap.add_argument("--port", type=int, default=DEFAULT_PORT)
-    ap.add_argument("--teacher-password", help="ustoz parolini o‘rnatish / задать пароль учителя")
+    ap.add_argument("--port", type=int, default=int(os.environ.get("PORT", DEFAULT_PORT)))
+    ap.add_argument("--teacher-password", default=os.environ.get("TEACHER_PASSWORD") or None,
+                    help="ustoz parolini o‘rnatish / задать пароль учителя")
     args = ap.parse_args()
+
+    # Internetda standart parol bilan ishga tushmaymiz / в интернете не стартуем со стандартным паролем
+    if os.environ.get("RENDER") and len(args.teacher_password or "") < 12:
+        raise SystemExit("ERROR: Render Environment'da TEACHER_PASSWORD ni kamida 12 belgili qilib o‘rnating. "
+                         "/ Задайте TEACHER_PASSWORD (минимум 12 символов) в Render Environment.")
 
     init_db()
     status = ensure_teacher(args.teacher_password)
@@ -259,8 +305,12 @@ def main():
             print("  ⚠ Parol standart qiymatda. Uni o‘zgartiring / Смените пароль учителя.")
     elif status == "changed":
         print("  Ustoz paroli yangilandi / Пароль учителя обновлён")
+    print(f"  Python /api/run: {'yoqilgan / включён' if RUN_ENABLED else 'o‘chirilgan / выключен'}")
     print("  To‘xtatish / Остановить:  Ctrl+C")
-    print("=" * 60)
+    print("=" * 60, flush=True)
+    # tozalash: muddati o‘tgan kirishlar / чистим просроченные входы
+    with _write_lock, db() as conn:
+        conn.execute("DELETE FROM tokens WHERE created<?", (time.time() - TOKEN_DAYS * 86400,))
     httpd = ThreadingHTTPServer(("0.0.0.0", args.port), Handler)
     try:
         httpd.serve_forever()

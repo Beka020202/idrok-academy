@@ -2,7 +2,6 @@
 Kodla — содержание уроков, тексты интерфейса и проверка кода."""
 
 import re
-import threading
 
 
 def L(uz, ru):
@@ -120,61 +119,7 @@ T = {
 }
 
 
-# ---------------------------------------------------------------- Python ishga tushirish
-# O‘quvchi kodi ustoz kompyuterida ishlaydi, shuning uchun fayl va tizimga
-# kirish yopilgan: open, eval, exec, os va boshqalar yo‘q.
-# Код ученика выполняется на компьютере учителя, поэтому доступ к файлам и
-# системе закрыт: нет open, eval, exec, os и т.п.
-import builtins as _b
-
-_ALLOWED = ("abs all any bool chr dict divmod enumerate filter float format frozenset hex int isinstance "
-            "issubclass iter len list map max min next oct ord pow range repr reversed round set slice "
-            "sorted str sum tuple type zip object super __build_class__ Exception ValueError TypeError IndexError "
-            "KeyError ZeroDivisionError StopIteration NameError ArithmeticError").split()
-SAFE_BUILTINS = {name: getattr(_b, name) for name in _ALLOWED}
-SAFE_MODULES = {"math", "random", "string", "itertools", "collections", "statistics", "fractions", "decimal"}
-
-
-def _safe_import(name, globals=None, locals=None, fromlist=(), level=0):
-    if name.split(".")[0] not in SAFE_MODULES:
-        raise ImportError(f"'{name}' moduli ruxsat etilmagan / модуль '{name}' не разрешён")
-    return __import__(name, globals, locals, fromlist, level)
-
-
-def run_python(code, inputs=None, timeout=3.0):
-    """Python kodini bajaradi va (chiqish, xato) qaytaradi.
-    Выполняет код Python и возвращает (вывод, ошибка)."""
-    out = []
-    result = {}
-    feed = iter(inputs or [])
-
-    def _print(*args, sep=" ", end="\n", **_):
-        out.append(sep.join(str(a) for a in args) + end)
-
-    def _input(prompt=""):
-        out.append(str(prompt))
-        try:
-            value = next(feed)
-        except StopIteration:
-            value = "Ali"
-        out.append(value + "\n")
-        return value
-
-    def target():
-        safe = dict(SAFE_BUILTINS)
-        safe.update(print=_print, input=_input, __import__=_safe_import)
-        env = {"__name__": "__main__", "__builtins__": safe}
-        try:
-            exec(compile(code, "<kod>", "exec"), env)
-        except Exception as exc:  # noqa: BLE001 — o‘quvchi xatosini ko‘rsatamiz
-            result["err"] = f"{type(exc).__name__}: {exc}"
-
-    th = threading.Thread(target=target, daemon=True)
-    th.start()
-    th.join(timeout)
-    if th.is_alive():
-        return "".join(out), "timeout"
-    return "".join(out), result.get("err")
+# Python kodi endi runner.py da xavfsiz bajariladi. / Python-код теперь выполняется безопасно в runner.py.
 
 
 def _has(pattern, code, flags=re.I):
@@ -188,7 +133,7 @@ def _has(pattern, code, flags=re.I):
 # check(code, output) -> bool
 
 COURSES = [
-    {"id": "html", "tag": "</>", "color": "#E8622C", "name": L("HTML", "HTML"),
+    {"id": "html", "tag": "</>", "color": "#F86400", "name": L("HTML", "HTML"),
      "sub": L("Veb-sahifa tuzilishi", "Структура веб-страницы"), "lessons": [
         {"id": "html1", "xp": 15, "title": L("Birinchi sahifa", "Первая страница"), "steps": [
             {"t": "read", "h": L("HTML nima?", "Что такое HTML?"),
@@ -239,7 +184,7 @@ COURSES = [
              "hint": L("<li>Matematika</li> — shunday 3 ta qator", "<li>Математика</li> — три такие строки")},
         ]},
     ]},
-    {"id": "css", "tag": "{ }", "color": "#1F7BE8", "name": L("CSS", "CSS"),
+    {"id": "css", "tag": "{ }", "color": "#111111", "name": L("CSS", "CSS"),
      "sub": L("Sahifani bezash", "Оформление страницы"), "lessons": [
         {"id": "css1", "xp": 15, "title": L("Ranglar", "Цвета"), "steps": [
             {"t": "read", "h": L("CSS qoidasi", "Правило CSS"),
@@ -291,7 +236,7 @@ COURSES = [
              "hint": L("padding: 16px; border: 2px solid blue;", "padding: 16px; border: 2px solid blue;")},
         ]},
     ]},
-    {"id": "js", "tag": "JS", "color": "#C99A00", "name": L("JavaScript", "JavaScript"),
+    {"id": "js", "tag": "JS", "color": "#FFC800", "name": L("JavaScript", "JavaScript"),
      "sub": L("Sahifaga jon berish", "Оживляем страницу"), "lessons": [
         {"id": "js1", "xp": 15, "title": L("O‘zgaruvchilar", "Переменные"), "steps": [
             {"t": "read", "h": L("Ma’lumotni saqlash", "Храним данные"),
@@ -346,7 +291,7 @@ COURSES = [
              "hint": L("return n * n;\nconsole.log(kvadrat(4));", "return n * n;\nconsole.log(kvadrat(4));")},
         ]},
     ]},
-    {"id": "py", "tag": "Py", "color": "#2F9E6E", "name": L("Python", "Python"),
+    {"id": "py", "tag": "Py", "color": "#FF9500", "name": L("Python", "Python"),
      "sub": L("Olimpiada tili", "Язык олимпиад"), "lessons": [
         {"id": "py1", "xp": 15, "title": L("print()", "print()"), "steps": [
             {"t": "read", "h": L("Birinchi dastur", "Первая программа"),

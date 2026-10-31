@@ -17,7 +17,7 @@ KEEP_DAYS = 60
 QUESTS = [
     {"id": "xp", "target": 30, "gems": 15, "icon": "⚡",
      "title": {"uz": "30 XP to‘plang", "ru": "Наберите 30 XP"}},
-    {"id": "lessons", "target": 2, "gems": 15, "icon": "📘",
+    {"id": "lessons", "target": 2, "gems": 15, "icon": "📙",
      "title": {"uz": "2 ta dars o‘ting", "ru": "Пройдите 2 урока"}},
     {"id": "combo", "target": 3, "gems": 20, "icon": "🔥",
      "title": {"uz": "Ketma-ket 3 ta to‘g‘ri javob", "ru": "3 верных ответа подряд"}},
