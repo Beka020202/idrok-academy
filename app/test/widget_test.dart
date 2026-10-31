@@ -10,6 +10,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> tapText(WidgetTester tester, String text, {bool contains = false}) async {
   final f = contains ? find.textContaining(text) : find.text(text);
+  if (f.evaluate().isEmpty) {
+    // Uzun ro‘yxatlar faqat ko‘rinadigan qismini quradi — pastga aylantiramiz.
+    // Длинные списки строят только видимую часть — прокручиваем вниз.
+    await tester.scrollUntilVisible(f, 300, scrollable: find.byType(Scrollable).first);
+    await tester.pump(const Duration(milliseconds: 1500));
+  }
   expect(f, findsWidgets, reason: text);
   await tester.ensureVisible(f.first);
   // iOS uslubidagi "qaytish" (bounce) tugashini kutamiz — bu vaqtda bosish e'tiborsiz qoladi.
