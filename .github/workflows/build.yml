@@ -47,6 +47,10 @@ jobs:
       - name: Testlar / тесты
         run: set -o pipefail; flutter test 2>&1 | tee "$GITHUB_WORKSPACE/ci-logs/3-test.txt"
 
+      - name: Ekran rasmlari / скриншоты
+        continue-on-error: true
+        run: set -o pipefail; SCREENSHOTS_DIR="$GITHUB_WORKSPACE/ci-logs/shots" flutter test test/screenshot_test.dart 2>&1 | tee "$GITHUB_WORKSPACE/ci-logs/5-shots.txt"
+
       - name: APK yig‘ish / сборка APK
         run: set -o pipefail; flutter build apk --release 2>&1 | tee "$GITHUB_WORKSPACE/ci-logs/4-build-apk.txt"
 
