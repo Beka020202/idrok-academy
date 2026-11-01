@@ -14,7 +14,6 @@ import 'package:flutter/services.dart';
 
 import 'config.dart';
 import 'lessons.dart';
-import 'progress.dart';
 import 'state.dart';
 import 'theme.dart';
 

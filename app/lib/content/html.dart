@@ -4,7 +4,7 @@ import 'model.dart';
 const _words = ['Salom', 'Idrok', 'Kod', 'Asaka', 'Python', 'Dunyo', 'Olma', 'Kitob'];
 const _names = ['Aziza', 'Bekzod', 'Laylo', 'Sardor', 'Madina', 'Jasur'];
 
-LessonStep _html1(Gen g) => g.from([
+List<LessonStep> _html1(Gen g) => g.from([
       Q(1, (g) => g.quizCode(const Tr('Paragrafni qaysi teg yopadi?', 'Какой тег закрывает абзац?'), '</p>',
           ['<p>', '<\\p>', '(p)', '<p/>'],
           e: const Tr('Yopuvchi teg nomidan oldin / qo‘yiladi: </p>.', 'В закрывающем теге перед именем стоит /: </p>.'))),

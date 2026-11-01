@@ -101,7 +101,7 @@ List<HelperItem> explainMistake(
       if (firstBad >= 0) {
         items.add(HelperItem(Icons.format_list_numbered_rounded,
             t('${firstBad + 1}-qator noto‘g‘ri joyda', 'Строка ${firstBad + 1} не на своём месте'),
-            t('Bu yerda turishi kerak:', 'Здесь должна стоять:') + '\n' + st.lines[firstBad],
+            '${t('Bu yerda turishi kerak:', 'Здесь должна стоять:')}\n${st.lines[firstBad]}',
             mono: true));
       }
       items.add(HelperItem(Icons.lightbulb_rounded, t('Qoida', 'Правило'),
