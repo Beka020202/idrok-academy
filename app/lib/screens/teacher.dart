@@ -6,7 +6,8 @@ import '../progress.dart';
 import '../state.dart';
 import '../theme.dart';
 import '../widgets.dart';
-import 'ranking.dart' show asInt, asStr, avatarOf;
+import 'ranking.dart' show asInt, asStr, rowAvatar;
+import 'shop.dart' show OrderRow;
 
 /// 5. Ustoz paneli / панель учителя.
 class TeacherTab extends StatefulWidget {
@@ -18,8 +19,10 @@ class TeacherTab extends StatefulWidget {
 
 class _TeacherTabState extends State<TeacherTab> {
   List<Map<String, dynamic>>? _rows;
+  List<ShopOrder>? _orders;
   String _error = '';
   bool _loading = false;
+  String _view = 'students';
 
   @override
   void initState() {
@@ -40,11 +43,24 @@ class _TeacherTabState extends State<TeacherTab> {
       final res = await s.api.call('/api/teacher/students');
       final rows = res['rows'];
       _rows = rows is List ? [for (final r in rows) if (r is Map) Map<String, dynamic>.from(r)] : [];
+      _orders = await s.teacherOrders();
     } on ApiError {
       _error = s.t('err_conn');
     }
     if (!mounted) return;
     setState(() => _loading = false);
+  }
+
+
+  int get _newOrders => (_orders ?? const <ShopOrder>[]).where((o) => o.status == 'new').length;
+
+  Future<void> _setStatus(ShopOrder o, String status) async {
+    final s = AppScope.read(context);
+    final ok = await s.setOrderStatus(o.id, status);
+    if (ok && mounted) {
+      s.toast(s.t(status == 'delivered' ? 'st_delivered' : 'st_cancelled'), icon: Icons.check_circle_rounded);
+      _load();
+    }
   }
 
   @override
@@ -92,8 +108,30 @@ class _TeacherTabState extends State<TeacherTab> {
             ),
           ),
         ]),
-        if (rows.isEmpty) EmptyState(icon: Icons.school_rounded, title: s.t('rank_empty')),
-        for (final r in rows) _StudentCard(r: r),
+        Segmented<String>(
+          key: const ValueKey('teacher-view'),
+          values: const ['students', 'orders'],
+          labels: [s.t('students_tab'), '${s.t('orders_tab')}${_newOrders > 0 ? ' · $_newOrders' : ''}'],
+          value: _view,
+          onChanged: (v) => setState(() => _view = v),
+        ),
+        if (_view == 'students') ...[
+          if (rows.isEmpty) EmptyState(icon: Icons.school_rounded, title: s.t('rank_empty')),
+          for (final r in rows) _StudentCard(r: r),
+        ] else ...[
+          if ((_orders ?? const []).isEmpty)
+            EmptyState(icon: Icons.redeem_rounded, title: s.t('no_orders'))
+          else
+            AppCard(
+              padding: const EdgeInsets.symmetric(horizontal: S.x4, vertical: S.x2),
+              child: Column(children: [
+                for (var k = 0; k < _orders!.length; k++) ...[
+                  if (k > 0) Divider(height: 1, color: s.c.hairline),
+                  OrderRow(order: _orders![k], teacher: true, onStatus: (st) => _setStatus(_orders![k], st)),
+                ],
+              ]),
+            ),
+        ],
       ];
     }
 
@@ -119,30 +157,40 @@ class _StudentCard extends StatelessWidget {
     final c = s.c;
     final done = _doneOf(r).toSet();
     final last = asStr(r['last_day']);
+    final league = asStr(r['league']);
     return AppCard(
       padding: const EdgeInsets.all(S.x4),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          AppAvatar(avatarOf(r), size: 46),
+          rowAvatar(s, r, size: 50),
           const SizedBox(width: S.x3),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(asStr(r['name']),
                   maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.headline.copyWith(color: c.text)),
-              Text('@${asStr(r['username'])}',
+              Text([asStr(r['school']), asStr(r['city'])].where((x) => x.isNotEmpty).join(' · '),
                   maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.caption.copyWith(color: c.text2)),
+              Text('@${asStr(r['username'])}',
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.caption.copyWith(color: c.text3)),
             ]),
           ),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text('${asInt(r['xp'])} XP', style: AppType.headline.copyWith(color: c.accentText, fontWeight: w8)),
+            Text('${asInt(r['xp_total'])} XP', style: AppType.headline.copyWith(color: c.accentText, fontWeight: w8)),
             const SizedBox(height: 2),
             Row(mainAxisSize: MainAxisSize.min, children: [
               Icon(Icons.local_fire_department_rounded, size: 14, color: c.accent),
               Text(' ${asInt(r['streak'])}   ', style: AppType.caption.copyWith(color: c.text2)),
-              Icon(Icons.diamond_rounded, size: 14, color: c.yellow),
-              Text(' ${asInt(r['gems'])}', style: AppType.caption.copyWith(color: c.text2)),
+              Icon(Icons.calendar_view_week_rounded, size: 14, color: c.yellow),
+              Text(' +${asInt(r['week_xp'])}', style: AppType.caption.copyWith(color: c.text2)),
             ]),
           ]),
+        ]),
+        const SizedBox(height: S.x3),
+        Row(children: [
+          LeagueBadge(league: league, size: 22),
+          const SizedBox(width: S.x2),
+          Text(league.isEmpty ? s.t('no_league') : s.tr(kLeagueNames[league] ?? kLeagueNames['beginner']!),
+              style: AppType.caption.copyWith(color: c.text2)),
         ]),
         const SizedBox(height: S.x4),
         Row(children: [
@@ -153,7 +201,8 @@ class _StudentCard extends StatelessWidget {
                 Text(co.tag, style: AppType.caption.copyWith(color: c.text2, fontFamily: kMono)),
                 const SizedBox(height: 6),
                 AppProgress(
-                  co.lessons.where((l) => done.contains(l.id)).length / co.lessons.length,
+                  co.lessonsFor(league).where((l) => done.contains(l.id)).length /
+                      (co.lessonsFor(league).isEmpty ? 1 : co.lessonsFor(league).length),
                   height: 6,
                   color: courseColor(co, c),
                 ),

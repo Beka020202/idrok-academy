@@ -8,22 +8,47 @@ kodla/
 ├── app/                  Flutter app (Dart)
 │   ├── lib/
 │   │   ├── config.dart   ← server addresses (edit after deploying)
-│   │   ├── lessons.dart  courses, lessons, answer checks
-│   │   ├── progress.dart game rules (XP, gems, quests, streak)
+│   │   ├── content/      courses and lessons: HTML, CSS, JS, Python, AI + warm-up test
+│   │   │                 (each lesson is a question *generator* — every attempt is different)
+│   │   ├── progress.dart game rules (XP, leagues, quests, streak)
+│   │   ├── focus.dart    Android "Do Not Disturb" during tests
 │   │   ├── i18n.dart     Uzbek / Russian texts
 │   │   ├── state.dart    app state, saving, server calls
 │   │   ├── widgets.dart  shared UI pieces
-│   │   └── screens/      login, home, courses, lesson, practice, ranking, teacher, profile
-│   ├── assets/fonts/     bundled fonts (work offline)
+│   │   └── screens/      intro, login, profile setup, home, courses, lesson/test, AI helper,
+│   │                     practice, ranking, shop, teacher, profile
+│   ├── assets/           fonts, icon, intro video, shop renders, shop list
 │   ├── test/             automatic tests
-│   └── tool/setup_platforms.py
+│   └── tool/             setup_platforms.py, shop_render/ (3D renders of shop prizes)
 ├── server/
-│   ├── server.py         accounts, leaderboard, teacher panel
+│   ├── server.py         accounts, photos, leagues, leaderboards, shop orders, teacher panel
 │   ├── runner.py         runs students' Python code in a locked-down process
-│   ├── lessons.py, progress.py
+│   ├── progress.py       same game rules as the app
+│   └── content/          lessons.json and shop.json (shared lists)
 ├── render.yaml           Render setup for both services
 └── .github/workflows/build.yml   GitHub builds the APK for you
 ```
+
+## How it works for students
+- **Intro video** plays on launch, then the app opens.
+- **Registration:** name, school, where they live and their own photo (no avatars).
+- **Warm-up:** 8 short questions after registration. It quietly places the student in the
+  Beginner, Advanced or Master league. Students are not told it is a placement test.
+- **Leagues:** students move up automatically when they are fast and accurate and earn much more XP
+  than others in their league in a week. Weekly and monthly leaderboards rank XP *earned* in the period,
+  so spending XP never lowers anyone's place.
+- **One currency — XP.** Lessons of similar length give the same XP in every league
+  (20 XP per lesson, 30 XP per AI project).
+- **Test protection:** every attempt gets new generated questions; leaving the app cancels the test
+  at once and the retry is harder; each question has a timer (harder = more time, beginners get extra time).
+  Android asks for Do Not Disturb access and silences notifications during a test.
+  iPhone shows a short Guided Access guide.
+- **XP shop:** real prizes with the Idrok logo (pen → laptop). Orders appear in the teacher panel,
+  where the teacher marks them delivered or cancels them (XP is refunded).
+- **AI helper:** after a mistake, explains it in simple words for 5 XP.
+- **AI course:** beginners learn what AI is, smart prompting and spotting AI mistakes and fakes;
+  Advanced and Master build a chatbot, a digit recogniser and a quiz generator.
+
 
 ## Design system
 Everything visual lives in two files, so screens never repeat styles:
@@ -70,11 +95,15 @@ In the app, tap **Server manzili / Адрес сервера** on the login scre
 (`http://192.168.x.x:8765`). Python exercises then run on this laptop too.
 
 ## Adding a lesson
-Add it in **both** `app/lib/lessons.dart` and `server/lessons.py` with the same `id` and `xp`.
-For a practice step, add its answer check to `kChecks` in `lessons.dart`.
+Write the lesson builder in `app/lib/content/<course>.dart`, add it to `kCourses` in
+`app/lib/content/catalog.dart`, and add the same `id`, `xp` and `leagues` to `server/content/lessons.json`.
+`flutter test` checks that both lists match and that every generated question is valid.
+
+## Shop prizes
+Prices and names live in `server/content/shop.json` (copy it to `app/assets/content/shop.json`).
+Pictures are `app/assets/shop/<id>.png`; `app/tool/shop_render/` re-creates them.
 
 ## Before Google Play / App Store
-- App icon: replace the default Flutter icon (e.g. with the `flutter_launcher_icons` package).
 - Google Play: create an upload key and release signing (the GitHub APK is fine for direct installs).
   Since users are school students, Play's rules for apps used by children apply.
 - iPhone: needs a Mac or a cloud Mac build plus an Apple Developer account ($99/year).

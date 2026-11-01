@@ -1,13 +1,28 @@
 import 'package:flutter/material.dart';
 
 import '../api.dart';
+import '../lessons.dart';
+import '../progress.dart';
 import '../state.dart';
 import '../theme.dart';
 import '../widgets.dart';
 
 int asInt(Object? v) => v is num ? v.toInt() : 0;
 String asStr(Object? v) => v == null ? '' : '$v';
-String avatarOf(Map<String, dynamic> r) => asStr(r['avatar']).isEmpty ? '🤖' : asStr(r['avatar']);
+
+/// Foydalanuvchi rasmi (server orqali) / фото пользователя (через сервер).
+Widget rowAvatar(AppState s, Map<String, dynamic> r, {double size = 40, bool ring = false}) {
+  final user = asStr(r['username']);
+  final mine = user.toLowerCase() == s.username.toLowerCase();
+  return AppAvatar(
+    bytes: mine ? s.myPhoto : null,
+    url: r['has_photo'] == true ? s.photoUrl(user) : null,
+    headers: s.authHeaders,
+    name: asStr(r['name']),
+    size: size,
+    ring: ring,
+  );
+}
 
 /// 4. Reyting / Рейтинг.
 class RankingTab extends StatefulWidget {
@@ -19,8 +34,11 @@ class RankingTab extends StatefulWidget {
 
 class _RankingTabState extends State<RankingTab> {
   List<Map<String, dynamic>>? _rows;
+  Map<String, dynamic>? _me;
   String _error = '';
   bool _loading = false;
+  String _period = 'week';
+  String _league = 'beginner';
 
   @override
   void initState() {
@@ -38,9 +56,12 @@ class _RankingTabState extends State<RankingTab> {
       _error = '';
     });
     try {
-      final res = await s.api.call('/api/leaderboard');
+      final q = 'period=$_period${s.isTeacher ? '&league=$_league' : ''}';
+      final res = await s.api.call('/api/leaderboard?$q');
       final rows = res['rows'];
       _rows = rows is List ? [for (final r in rows) if (r is Map) Map<String, dynamic>.from(r)] : [];
+      final me = res['me'];
+      _me = me is Map ? Map<String, dynamic>.from(me) : null;
     } on ApiError {
       _error = s.t('err_conn');
     }
@@ -65,14 +86,67 @@ class _RankingTabState extends State<RankingTab> {
     } else if (_rows!.isEmpty) {
       content = [EmptyState(icon: Icons.flag_rounded, title: s.t('rank_empty'))];
     } else {
-      content = [_Podium(rows: _rows!), _List(rows: _rows!)];
+      content = [
+        _Podium(rows: _rows!),
+        _List(rows: _rows!),
+        if (_me != null) _List(rows: [_me!], startRank: asInt(_me!['rank'])),
+      ];
     }
+
+    final c = s.c;
+    final league = s.isTeacher ? _league : s.st.league;
+    final header = AppCard(
+      padding: const EdgeInsets.all(S.x4),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          LeagueBadge(league: league, size: 48),
+          const SizedBox(width: S.x3),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(s.tr(kLeagueNames[league] ?? kLeagueNames['beginner']!),
+                  style: AppType.headline.copyWith(color: c.text)),
+              const SizedBox(height: 2),
+              Text(s.t('rank_rule'), style: AppType.caption.copyWith(color: c.text2)),
+            ]),
+          ),
+        ]),
+        if (s.isTeacher) ...[
+          const SizedBox(height: S.x4),
+          Segmented<String>(
+            values: kLeagues,
+            labels: [for (final l in kLeagues) s.tr(kLeagueNames[l]!).split(' ').first],
+            value: _league,
+            onChanged: (v) {
+              setState(() {
+                _league = v;
+                _rows = null;
+              });
+              _load();
+            },
+          ),
+        ],
+        const SizedBox(height: S.x3),
+        Segmented<String>(
+          key: const ValueKey('period'),
+          values: const ['week', 'month'],
+          labels: [s.t('period_week'), s.t('period_month')],
+          value: _period,
+          onChanged: (v) {
+            setState(() {
+              _period = v;
+              _rows = null;
+            });
+            _load();
+          },
+        ),
+      ]),
+    );
 
     return TabPage(
       title: s.t('ranking'),
       trailing: s.online ? refresh : null,
       onRefresh: s.online ? _load : null,
-      children: content,
+      children: [if (s.online) header, ...content],
     );
   }
 }
@@ -105,7 +179,7 @@ class _Podium extends StatelessWidget {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           if (idx == 0) Icon(Icons.workspace_premium_rounded, color: c.yellow, size: 26) else const SizedBox(height: 26),
           const SizedBox(height: 4),
-          AppAvatar(avatarOf(r), size: idx == 0 ? 60 : 50, ring: idx == 0 || mine),
+          rowAvatar(s, r, size: idx == 0 ? 60 : 50, ring: idx == 0 || mine),
           const SizedBox(height: S.x2),
           Text(asStr(r['name']),
               maxLines: 1,
@@ -178,7 +252,8 @@ class _PodiumSkeleton extends StatelessWidget {
 // ------------------------------------------------------------ ro‘yxat / список
 class _List extends StatelessWidget {
   final List<Map<String, dynamic>> rows;
-  const _List({required this.rows});
+  final int startRank;
+  const _List({required this.rows, this.startRank = 1});
 
   @override
   Widget build(BuildContext context) {
@@ -203,12 +278,14 @@ class _List extends StatelessWidget {
         child: Row(children: [
           SizedBox(
             width: 26,
-            child: Text('${i + 1}',
-                textAlign: TextAlign.center,
-                style: AppType.headline.copyWith(color: i < 3 ? c.accentText : c.text3, fontWeight: w8)),
+            child: FittedBox(
+              child: Text('${startRank + i}',
+                  textAlign: TextAlign.center,
+                  style: AppType.headline.copyWith(color: startRank + i <= 3 ? c.accentText : c.text3, fontWeight: w8)),
+            ),
           ),
           const SizedBox(width: S.x2),
-          AppAvatar(avatarOf(r), size: 40),
+          rowAvatar(s, r, size: 40),
           const SizedBox(width: S.x3),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -218,7 +295,11 @@ class _List extends StatelessWidget {
                   style: AppType.subhead.copyWith(color: c.text, fontWeight: w8)),
               const SizedBox(height: 2),
               Text(
-                '${s.t('level')} ${asInt(r['level'])}  ·  ${asInt(r['streak'])} 🔥  ·  ${asInt(r['done'])} ${s.t('lessons')}',
+                [
+                  if (asStr(r['school']).isNotEmpty) asStr(r['school']),
+                  '${s.t('level')} ${asInt(r['level'])}',
+                  '${asInt(r['streak'])} 🔥',
+                ].join('  ·  '),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppType.caption.copyWith(color: c.text2),

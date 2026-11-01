@@ -8,97 +8,198 @@ import 'package:kodla/main.dart';
 import 'package:kodla/state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-Future<void> tapText(WidgetTester tester, String text, {bool contains = false}) async {
-  final f = contains ? find.textContaining(text) : find.text(text);
-  if (f.evaluate().isEmpty) {
-    // Uzun ro‘yxatlar faqat ko‘rinadigan qismini quradi — pastga aylantiramiz.
-    // Длинные списки строят только видимую часть — прокручиваем вниз.
-    await tester.scrollUntilVisible(f, 300, scrollable: find.byType(Scrollable).first);
-    await tester.pump(const Duration(milliseconds: 1500));
-  }
-  expect(f, findsWidgets, reason: text);
-  await tester.ensureVisible(f.first);
-  // iOS uslubidagi "qaytish" (bounce) tugashini kutamiz — bu vaqtda bosish e'tiborsiz qoladi.
-  // Ждём окончания «отскока» прокрутки — во время него нажатия игнорируются.
-  await tester.pump(const Duration(milliseconds: 100));
-  await tester.pump(const Duration(milliseconds: 1500));
-  await tester.tap(f.first);
-  await tester.pump();
-  await tester.pump(const Duration(milliseconds: 600));
+Future<void> settle(WidgetTester t, [int ms = 700]) async {
+  await t.pump();
+  await t.pump(Duration(milliseconds: ms));
+}
+
+Future<void> tapKey(WidgetTester t, Key key) async {
+  final f = find.byKey(key);
+  expect(f, findsWidgets, reason: '$key');
+  await t.ensureVisible(f.last);
+  await t.pump(const Duration(milliseconds: 100));
+  await t.pump(const Duration(milliseconds: 1200));
+  await t.tap(f.last, warnIfMissed: false);
+  await settle(t);
 }
 
 Future<void> tapTab(WidgetTester tester, String id) async {
   await tester.tap(find.byKey(ValueKey('nav-$id')));
-  await tester.pump();
-  await tester.pump(const Duration(milliseconds: 600));
+  await settle(tester);
+}
+
+Future<void> fillField(WidgetTester t, String key, String text) async {
+  final f = find.descendant(of: find.byKey(ValueKey(key)), matching: find.byType(TextField));
+  await t.ensureVisible(f);
+  await t.enterText(f, text);
+  await t.pump();
+}
+
+bool has(Key k) => find.byKey(k).evaluate().isNotEmpty;
+
+String solution(WidgetTester t) => t.widgetList<Text>(find.byKey(const ValueKey('test-solution'))).last.data!;
+
+/// Bitta qadamga to‘g‘ri javob berish / правильный ответ на один шаг.
+Future<void> answer(WidgetTester t, String sol) async {
+  if (sol.startsWith('opt:')) {
+    await tapKey(t, ValueKey('opt-${sol.substring(4)}'));
+  } else if (sol.startsWith('fill:')) {
+    await t.enterText(find.byKey(const ValueKey('fill-input')), sol.substring(5));
+    await t.pump();
+  } else if (sol.startsWith('order:')) {
+    final n = int.parse(sol.substring(6));
+    for (var k = 0; k < n; k++) {
+      await tapKey(t, ValueKey('order-line-$k'));
+    }
+  } else {
+    final f = find.descendant(of: find.byKey(const ValueKey('code-editor')), matching: find.byType(TextField));
+    await t.enterText(f, sol.substring(4));
+    await t.pump();
+  }
+  await tapKey(t, const ValueKey('step-check'));
+}
+
+/// Butun dars yoki isinishni o‘tish / пройти урок или разминку целиком.
+Future<void> playSteps(WidgetTester t, {bool mistakeWithHelper = false, String doneText = 'Dars tugadi!'}) async {
+  var mistakeDone = !mistakeWithHelper;
+  for (var guard = 0; guard < 60; guard++) {
+    await settle(t);
+    if (find.text(doneText).evaluate().isNotEmpty) return;
+    if (!has(const ValueKey('test-solution'))) {
+      if (has(const ValueKey('step-next'))) await tapKey(t, const ValueKey('step-next'));
+      continue;
+    }
+    final sol = solution(t);
+    if (!mistakeDone && sol.startsWith('opt:')) {
+      // Ataylab xato javob va AI yordamchi / намеренная ошибка и AI-помощник
+      final right = int.parse(sol.substring(4));
+      await tapKey(t, ValueKey('opt-${right == 0 ? 1 : 0}'));
+      await tapKey(t, const ValueKey('step-check'));
+      expect(find.byKey(const ValueKey('helper-btn')), findsOneWidget);
+      await tapKey(t, const ValueKey('helper-btn'));
+      expect(find.byKey(const ValueKey('helper-ok')), findsOneWidget);
+      await tapKey(t, const ValueKey('helper-ok'));
+      mistakeDone = true;
+    }
+    await answer(t, sol);
+    await tapKey(t, const ValueKey('step-next'));
+  }
+  fail('steps did not finish');
 }
 
 void main() {
-  testWidgets('offline mode: every tab and a full lesson', (tester) async {
+  testWidgets('offline: profile, warm-up, tabs, lesson, helper, cancel, shop', (tester) async {
     SharedPreferences.setMockInitialValues({});
     tester.view.physicalSize = const Size(1200, 2600);
     tester.view.devicePixelRatio = 2.0;
     addTearDown(tester.view.reset);
 
-    final state = AppState()..allowWarmUp = false;
+    final state = AppState()
+      ..allowWarmUp = false
+      ..testMode = true;
     await tester.pumpWidget(KodlaApp(state: state));
     await state.init();
-    await tester.pump();
+    await settle(tester, 900);
 
-    // Kirish ekrani / экран входа
-    await tester.pump(const Duration(milliseconds: 800));
-    expect(find.text('Serversiz davom etish'), findsOneWidget);
-    await tapText(tester, 'Serversiz davom etish');
+    // 1) Kirish ekrani / экран входа
+    expect(find.byKey(const ValueKey('go-offline')), findsOneWidget);
+    await tapKey(tester, const ValueKey('go-offline'));
     expect(state.mode, 'offline');
 
-    // Barcha tablar / все вкладки
+    // 2) Profil: rasm, ism, maktab, shahar / профиль: фото, имя, школа, город
+    expect(find.text('Keling, tanishamiz!'), findsOneWidget);
+    await tapKey(tester, const ValueKey('setup-save'));
+    expect(find.text('O‘zingizning rasmingizni qo‘shing.').evaluate().isEmpty &&
+        find.text('Ism, maktab va yashash joyini to‘ldiring.').evaluate().isEmpty, isFalse);
+    await tapKey(tester, const ValueKey('photo-pick'));
+    await fillField(tester, 'f-name', 'Aziza Karimova');
+    await fillField(tester, 'f-school', '45-maktab');
+    await fillField(tester, 'f-city', 'Toshkent');
+    await tapKey(tester, const ValueKey('setup-save'));
+    expect(state.localName, 'Aziza Karimova');
+    expect(state.myPhoto, isNotNull);
+
+    // 3) Isinish (liga aniqlanadi) / разминка (определяет лигу)
+    await settle(tester, 900);
+    expect(find.text('Kichik isinish'), findsOneWidget);
+    await tapKey(tester, const ValueKey('test-start'));
+    await playSteps(tester, doneText: 'Zo‘r isinish!');
+    await tapKey(tester, const ValueKey('placement-finish'));
+    await settle(tester, 900);
+    expect(state.st.league, isNotEmpty);
+    expect(state.st.xp, 20);
+    expect(find.byKey(const ValueKey('nav-home')), findsOneWidget);
+
+    // 4) Barcha tablar / все вкладки
     for (final id in ['courses', 'play', 'ranking', 'profile', 'home']) {
       await tapTab(tester, id);
     }
+    await tapKey(tester, const ValueKey('xp-pill'));
+    expect(find.text('XP do‘koni'), findsWidgets);
+    await tapKey(tester, const ValueKey('shop-pen'));
+    expect(find.byKey(const ValueKey('buy-confirm')), findsOneWidget);
+    await tapKey(tester, const ValueKey('buy-confirm')); // oflayn — o‘chirilgan / офлайн — неактивна
+    await tester.tapAt(const Offset(20, 20));
+    await settle(tester);
 
     // Rus tili va qorong‘i mavzu / русский язык и тёмная тема
     state.toggleLang();
     state.toggleTheme();
-    await tester.pump(const Duration(milliseconds: 600));
-    for (final id in ['courses', 'play', 'profile', 'home']) {
+    await settle(tester);
+    for (final id in ['courses', 'play', 'ranking', 'profile', 'home']) {
       await tapTab(tester, id);
     }
+    state.go('shop');
+    await settle(tester);
     state.setTheme('system');
-    await tester.pump(const Duration(milliseconds: 600));
     state.toggleLang();
-    await tester.pump(const Duration(milliseconds: 600));
+    await settle(tester);
 
-    // Birinchi dars / первый урок: nazariya → savol → savol → amaliyot
-    await tapText(tester, 'O‘ynash', contains: true);
-    await tapText(tester, 'Davom etish');
-    await tapText(tester, '<h1>');
-    await tapText(tester, 'Tekshirish');
-    await tapText(tester, 'Davom etish');
-    await tapText(tester, '<p/>'); // noto‘g‘ri javob / неверный ответ
-    await tapText(tester, 'Tekshirish');
-    expect(find.textContaining('Qayta urinib'), findsOneWidget);
-    await tapText(tester, '</p>');
-    await tapText(tester, 'Tekshirish');
-    await tapText(tester, 'Davom etish');
-    await tester.enterText(find.byType(TextField), '<h1>Aziza</h1>');
-    await tester.pump();
-    await tapText(tester, 'Tekshirish');
-    await tapText(tester, 'Davom etish');
-    await tester.pump(const Duration(seconds: 1));
-
-    expect(find.text('Dars tugadi!'), findsOneWidget);
+    // 5) Birinchi dars (xato + AI yordamchi) / первый урок (ошибка + AI-помощник)
+    await tapTab(tester, 'courses');
+    await tapKey(tester, const ValueKey('course-html'));
+    await tapKey(tester, const ValueKey('lesson-html1'));
+    expect(find.byKey(const ValueKey('test-start')), findsOneWidget);
+    await tapKey(tester, const ValueKey('test-start'));
+    await playSteps(tester, mistakeWithHelper: true);
     expect(state.st.isDone('html1'), isTrue);
-    expect(state.st.xp, 15); // xato bor edi — "xatosiz" bonusi yo‘q / была ошибка — без бонуса
-    expect(state.st.gems, 10);
-
-    await tapText(tester, 'Kurslarga qaytish');
+    expect(state.st.xp, 20 - 5 + 20); // isinish − yordamchi + dars / разминка − помощник + урок
+    expect(state.st.xpTotal, 40);
+    await tapKey(tester, const ValueKey('lesson-back'));
     expect(find.byKey(const ValueKey('nav-home')), findsOneWidget);
 
-    // Kunlik vazifa: 2 ta dars kerak, hali bitta / задание: нужно 2 урока, пока один
+    // 6) Ilovadan chiqish testni bekor qiladi / выход из приложения отменяет тест
+    await tapKey(tester, const ValueKey('lesson-html2'));
+    await tapKey(tester, const ValueKey('test-start'));
+    expect(has(const ValueKey('lesson-close')), isTrue);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    await tester.pump();
+    expect(state.st.retries['html2'], 1);
+    expect(state.st.difficultyFor('html2'), greaterThanOrEqualTo(2));
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await settle(tester, 900);
+    expect(has(const ValueKey('lesson-close')), isFalse);
+    expect(find.text('Test bekor qilindi'), findsOneWidget);
+    await tapKey(tester, const ValueKey('notice-ok'));
+
+    // 7) X tugmasi bilan chiqish / выход кнопкой X
+    await tapKey(tester, const ValueKey('lesson-html2'));
+    await tapKey(tester, const ValueKey('test-start'));
+    await tapKey(tester, const ValueKey('lesson-close'));
+    await tapKey(tester, const ValueKey('quit-yes'));
+    expect(state.st.retries['html2'], 2);
+    expect(has(const ValueKey('lesson-close')), isFalse);
+
+    // 8) Profilni tahrirlash / редактирование профиля
     await tapTab(tester, 'profile');
-    await tapText(tester, 'Progressni o‘chirish');
-    await tapText(tester, 'Ha, o‘chirish');
-    expect(state.st.xp, 0);
+    await tapKey(tester, const ValueKey('edit-profile'));
+    await fillField(tester, 'f-city', 'Samarqand');
+    await tapKey(tester, const ValueKey('profile-save'));
+    expect(state.localCity, 'Samarqand');
 
     // Bildirishnoma yopilishini kutamiz / ждём, пока скроется уведомление
     await tester.pump(const Duration(seconds: 4));

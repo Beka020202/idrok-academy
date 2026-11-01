@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 import '../config.dart';
@@ -5,6 +7,7 @@ import '../main.dart' show AppLogo;
 import '../state.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'profile_form.dart';
 
 /// Kirish / ro‘yxatdan o‘tish / вход и регистрация.
 class AuthScreen extends StatefulWidget {
@@ -18,6 +21,9 @@ class _AuthScreenState extends State<AuthScreen> {
   final _user = TextEditingController();
   final _pass = TextEditingController();
   final _name = TextEditingController();
+  final _school = TextEditingController();
+  final _city = TextEditingController();
+  Uint8List? _photo;
   late final TextEditingController _server;
   bool _register = false;
   bool _showPass = false;
@@ -40,6 +46,8 @@ class _AuthScreenState extends State<AuthScreen> {
     _user.dispose();
     _pass.dispose();
     _name.dispose();
+    _school.dispose();
+    _city.dispose();
     _server.dispose();
     super.dispose();
   }
@@ -52,6 +60,9 @@ class _AuthScreenState extends State<AuthScreen> {
       username: _user.text,
       password: _pass.text,
       name: _name.text,
+      school: _school.text,
+      city: _city.text,
+      photo: _photo,
       serverUrl: _server.text,
     );
     if (!mounted) return;
@@ -108,17 +119,22 @@ class _AuthScreenState extends State<AuthScreen> {
           alignment: Alignment.topCenter,
           child: reg
               ? Padding(
-                  padding: const EdgeInsets.only(top: S.x4),
-                  child: AppTextField(
-                    controller: _name,
-                    label: s.t('name'),
-                    icon: Icons.badge_rounded,
-                    maxLength: 30,
-                    textCapitalization: TextCapitalization.words,
-                    autocorrect: true,
-                    textInputAction: TextInputAction.done,
-                    onSubmitted: (_) => _submit(),
-                  ),
+                  padding: const EdgeInsets.only(top: S.x5),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    Center(
+                      child: PhotoPicker(
+                        bytes: _photo,
+                        name: _name.text,
+                        size: 96,
+                        onPicked: (b) => setState(() => _photo = b),
+                      ),
+                    ),
+                    const SizedBox(height: S.x2),
+                    Text(s.t('photo_need'),
+                        textAlign: TextAlign.center, style: AppType.footnote.copyWith(color: c.text2)),
+                    const SizedBox(height: S.x4),
+                    ProfileFields(name: _name, school: _school, city: _city, onDone: _submit),
+                  ]),
                 )
               : const SizedBox(width: double.infinity),
         ),
@@ -146,23 +162,13 @@ class _AuthScreenState extends State<AuthScreen> {
               ? const SizedBox(width: double.infinity)
               : Padding(
                   padding: const EdgeInsets.only(top: S.x4),
-                  child: Shake(
-                    trigger: _errorTick,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: S.x3 + 2, vertical: S.x3),
-                      decoration: BoxDecoration(color: c.dangerSoft, borderRadius: R.all(R.md - 2)),
-                      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Icon(Icons.error_rounded, size: 18, color: c.danger),
-                        const SizedBox(width: S.x2),
-                        Expanded(child: Text(_error, style: AppType.subhead.copyWith(color: c.danger))),
-                      ]),
-                    ),
-                  ),
+                  child: ErrorBox(_error, tick: _errorTick),
                 ),
         ),
         const SizedBox(height: S.x5),
         AppButton(
           reg ? s.t('register_btn') : s.t('login_btn'),
+          key: const ValueKey('auth-submit'),
           onPressed: _submit,
           loading: s.busy,
           expand: true,
@@ -220,7 +226,7 @@ class _AuthScreenState extends State<AuthScreen> {
                             border: Border.all(color: c.hairline),
                           ),
                           child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            const AppAvatar('🤖', size: 28),
+                            const IconTile(Icons.tips_and_updates_rounded, size: 28, circle: true),
                             const SizedBox(width: S.x2),
                             Flexible(
                               child: Text(_tip,
@@ -254,6 +260,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     const SizedBox(height: S.x4),
                     AppButton(
                       s.t('offline'),
+                      key: const ValueKey('go-offline'),
                       onPressed: s.busy ? null : s.goOffline,
                       kind: BtnKind.secondary,
                       icon: Icons.wifi_off_rounded,

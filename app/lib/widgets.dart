@@ -640,24 +640,52 @@ class _RingPainter extends CustomPainter {
   bool shouldRepaint(_RingPainter o) => o.v != v || o.color != color || o.track != track || o.stroke != stroke;
 }
 
-/// Avatar (emoji) / аватар.
+/// Profil rasmi (yoki bosh harflar) / фото профиля (или инициалы).
 class AppAvatar extends StatelessWidget {
-  final String emoji;
+  final Uint8List? bytes;
+  final String? url;
+  final Map<String, String>? headers;
+  final String name;
   final double size;
   final bool ring;
-  const AppAvatar(this.emoji, {super.key, this.size = 44, this.ring = false});
+  const AppAvatar({super.key, this.bytes, this.url, this.headers, this.name = '', this.size = 44, this.ring = false});
+
+  static String initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+')).where((x) => x.isNotEmpty).toList();
+    if (parts.isEmpty) return '?';
+    final a = parts.first.characters.first.toUpperCase();
+    final b = parts.length > 1 ? parts[1].characters.first.toUpperCase() : '';
+    return '$a$b';
+  }
 
   @override
   Widget build(BuildContext context) {
     final c = colorsOf(context);
-    final inner = Container(
+    final fallback = Container(
       alignment: Alignment.center,
+      decoration: BoxDecoration(
+        gradient: c.heroGradient,
+      ),
+      child: Text(initials(name),
+          style: AppType.headline.copyWith(fontSize: size * 0.36, color: kWhite, height: 1)),
+    );
+    Widget img;
+    if (bytes != null && bytes!.isNotEmpty) {
+      img = Image.memory(bytes!, fit: BoxFit.cover, gaplessPlayback: true,
+          errorBuilder: (_, __, ___) => fallback);
+    } else if (url != null && url!.isNotEmpty) {
+      img = Image.network(url!, headers: headers, fit: BoxFit.cover, gaplessPlayback: true,
+          errorBuilder: (_, __, ___) => fallback);
+    } else {
+      img = fallback;
+    }
+    final inner = Container(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: c.isDark ? c.elevated : c.surfaceAlt,
         border: Border.all(color: ring ? c.bg : c.hairline, width: ring ? size * 0.045 : 1),
       ),
-      child: Text(emoji, style: TextStyle(fontSize: size * 0.46, height: 1.15)),
+      child: ClipOval(child: SizedBox.expand(child: img)),
     );
     if (!ring) return SizedBox(width: size, height: size, child: inner);
     return Container(
@@ -666,6 +694,26 @@ class AppAvatar extends StatelessWidget {
       padding: EdgeInsets.all(size * 0.05),
       decoration: BoxDecoration(shape: BoxShape.circle, gradient: c.accentGradient),
       child: inner,
+    );
+  }
+}
+
+/// Joriy foydalanuvchi rasmi / фото текущего пользователя.
+class MyAvatar extends StatelessWidget {
+  final double size;
+  final bool ring;
+  const MyAvatar({super.key, this.size = 44, this.ring = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppScope.of(context);
+    return AppAvatar(
+      bytes: s.myPhoto,
+      url: s.myPhoto == null && s.online ? s.photoUrl(s.username) : null,
+      headers: s.authHeaders,
+      name: s.displayName,
+      size: size,
+      ring: ring,
     );
   }
 }
@@ -1574,8 +1622,8 @@ class _ToastViewState extends State<_ToastView> with SingleTickerProviderStateMi
 }
 
 // ============================================================ SAHIFA KARKASI / КАРКАС СТРАНИЦ
-/// Yuqori qator: avatar, nom, daraja, olov va olmos.
-/// Верхняя строка: аватар, название, уровень, огонь и кристаллы.
+/// Yuqori qator: rasm, nom, liga, olov va XP.
+/// Верхняя строка: фото, название, лига, огонь и XP.
 class Header extends StatelessWidget {
   const Header({super.key});
 
@@ -1588,19 +1636,26 @@ class Header extends StatelessWidget {
         onTap: () => s.go('profile'),
         scale: 0.92,
         semanticLabel: s.t('profile'),
-        child: AppAvatar(s.st.avatar, size: 42, ring: true),
+        child: const MyAvatar(size: 42, ring: true),
       ),
       const SizedBox(width: S.x3),
       Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
           Text(kAppName, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.brand.copyWith(color: c.text)),
           const SizedBox(height: 3),
-          Text('${s.t('level')} ${levelOf(s.st.xp)}', style: AppType.caption.copyWith(color: c.text2)),
+          Text(s.isTeacher ? s.t('teacher') : s.leagueName,
+              maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.caption.copyWith(color: c.text2)),
         ]),
       ),
       AppPill('${s.st.streak}', icon: Icons.local_fire_department_rounded, iconColor: c.accent),
       const SizedBox(width: S.x2),
-      AppPill('${s.st.gems}', icon: Icons.diamond_rounded, iconColor: c.yellow),
+      Pressable(
+        key: const ValueKey('xp-pill'),
+        onTap: s.isTeacher ? null : () => s.go('shop'),
+        scale: 0.94,
+        semanticLabel: s.t('shop'),
+        child: AppPill('${s.st.xp} XP', icon: Icons.bolt_rounded, iconColor: c.yellow),
+      ),
     ]);
   }
 }
@@ -1777,6 +1832,34 @@ class CourseTag extends StatelessWidget {
       ),
       child: Text(course.tag,
           style: AppType.monoStrong.copyWith(fontSize: fontSize, color: onColorBg ? kWhite : onColor(col))),
+    );
+  }
+}
+
+/// Liga belgisi / значок лиги.
+class LeagueBadge extends StatelessWidget {
+  final String league;
+  final double size;
+  const LeagueBadge({super.key, required this.league, this.size = 48});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = colorsOf(context);
+    final (icon, colors) = switch (league) {
+      'master' => (Icons.workspace_premium_rounded, const [Color(0xFF3B4BFF), Color(0xFF0A1226)]),
+      'advanced' => (Icons.bolt_rounded, const [Color(0xFF3FA9FF), Color(0xFF0058E6)]),
+      _ => (Icons.flag_rounded, const [Color(0xFF7FD3FF), Color(0xFF1FA2F0)]),
+    };
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(size * 0.32),
+        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: colors),
+        border: Border.all(color: const Color(0x40FFFFFF), width: 1.5),
+        boxShadow: Shadows.glow(colors.last, c, strength: 0.45),
+      ),
+      child: Icon(icon, size: size * 0.52, color: kWhite, shadows: kTextShadow),
     );
   }
 }

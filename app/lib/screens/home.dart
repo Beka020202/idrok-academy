@@ -6,6 +6,7 @@ import '../state.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'lesson.dart';
+import 'shop.dart' show ShopImage;
 
 const Map<String, IconData> kQuestIcons = {
   'xp': Icons.bolt_rounded,
@@ -40,8 +41,10 @@ class HomeTab extends StatelessWidget {
       title: '${s.t('hello')}${name.isNotEmpty ? ', $name' : ''}',
       children: [
         _Hero(next: next, course: nlCourse),
+        if (!s.isTeacher) const _LeagueCard(),
         _Mascot(tip: tip),
         _Quests(st: st),
+        if (!s.isTeacher && s.shopItems.isNotEmpty) const _ShopTeaser(),
         _Week(st: st),
         SectionHeader(s.t('courses')),
         gridOf([for (final co in kCourses) _CourseCard(co)], 2),
@@ -60,7 +63,7 @@ class _Hero extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
     final c = s.c, st = s.st;
-    final lvl = levelOf(st.xp);
+    final lvl = levelOf(st.xpTotal);
     final goal = st.todayXp < kGoal ? st.todayXp : kGoal;
     final nx = next;
     final white70 = kWhite.withAlpha(0xD9);
@@ -109,7 +112,7 @@ class _Hero extends StatelessWidget {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 AppRing(
-                  (st.xp % 100) / 100,
+                  (st.xpTotal % 100) / 100,
                   size: 84,
                   stroke: 8,
                   color: kWhite,
@@ -124,7 +127,7 @@ class _Hero extends StatelessWidget {
                 const SizedBox(width: S.x4 + 2),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('${100 - st.xp % 100} XP',
+                    Text('${100 - st.xpTotal % 100} XP',
                         style: AppType.title2.copyWith(color: kWhite, shadows: kTextShadow)),
                     Text(s.t('next_level'), style: AppType.subhead.copyWith(color: white70)),
                     const SizedBox(height: S.x3),
@@ -173,7 +176,7 @@ class _Mascot extends StatelessWidget {
     return AppCard(
       padding: const EdgeInsets.all(S.x4),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const AppAvatar('🤖', size: 46),
+        const IconTile(Icons.tips_and_updates_rounded, size: 46, vivid: true),
         const SizedBox(width: S.x3),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -207,10 +210,14 @@ class _Quests extends StatelessWidget {
       if (claimed) {
         action = AppPill(s.t('claimed'), icon: Icons.check_rounded, tone: Tone.yellow, small: true);
       } else if (done) {
-        action = AppButton('${s.t('claim')} ${q.gems}',
-            onPressed: () => s.claim(q.id), kind: BtnKind.success, height: 38, icon: Icons.diamond_rounded);
+        action = AppButton('+${q.reward}',
+            key: ValueKey('claim-${q.id}'),
+            onPressed: () => s.claim(q.id),
+            kind: BtnKind.success,
+            height: 38,
+            icon: Icons.bolt_rounded);
       } else {
-        action = AppPill('${q.gems}', icon: Icons.diamond_rounded, iconColor: c.yellow, small: true);
+        action = AppPill('+${q.reward} XP', icon: Icons.bolt_rounded, iconColor: c.yellow, small: true);
       }
       if (i > 0) rows.add(Divider(height: S.x6, thickness: 1, color: c.hairline));
       rows.add(Row(children: [
@@ -305,7 +312,7 @@ class _CourseCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
     final c = s.c;
-    final d = s.progressOf(co), n = co.lessons.length;
+    final d = s.progressOf(co), n = s.lessonsOf(co).length;
     final opened = s.st.chests.contains(co.id);
     return AppCard(
       onTap: () => s.pickCourse(co.id, open: true),
@@ -323,9 +330,93 @@ class _CourseCard extends StatelessWidget {
         Text(s.tr(co.sub), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.caption.copyWith(color: c.text2)),
         const Spacer(),
         const SizedBox(height: S.x3),
-        AppProgress(d / n, height: 6, color: courseColor(co, c)),
+        AppProgress(n == 0 ? 0 : d / n, height: 6, color: courseColor(co, c)),
         const SizedBox(height: S.x2),
         Text('$d/$n ${s.t('lessons')}', style: AppType.caption.copyWith(color: c.text2)),
+      ]),
+    );
+  }
+}
+
+// ------------------------------------------------------------ liga / лига
+class _LeagueCard extends StatelessWidget {
+  const _LeagueCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppScope.of(context);
+    final c = s.c;
+    final idx = switch (s.st.league) { 'master' => 2, 'advanced' => 1, _ => 0 };
+    return AppCard(
+      key: const ValueKey('league-card'),
+      onTap: () => s.go('ranking'),
+      padding: const EdgeInsets.all(S.x4),
+      child: Row(children: [
+        LeagueBadge(league: s.st.league, size: 52),
+        const SizedBox(width: S.x3),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(s.leagueName, style: AppType.headline.copyWith(color: c.text)),
+            const SizedBox(height: 4),
+            Row(children: [
+              for (var k = 0; k < 3; k++) ...[
+                Expanded(
+                  child: Container(
+                    height: 6,
+                    decoration: BoxDecoration(
+                      borderRadius: R.all(R.pill),
+                      gradient: k <= idx ? c.accentGradient : null,
+                      color: k <= idx ? null : c.surfaceAlt,
+                    ),
+                  ),
+                ),
+                if (k < 2) const SizedBox(width: 4),
+              ],
+            ]),
+            const SizedBox(height: 6),
+            Text(s.t(idx == 2 ? 'league_top' : 'league_hint'),
+                maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.caption.copyWith(color: c.text2)),
+          ]),
+        ),
+        const SizedBox(width: S.x2),
+        Icon(Icons.chevron_right_rounded, color: c.text3),
+      ]),
+    );
+  }
+}
+
+// ------------------------------------------------------------ do‘kon / магазин
+class _ShopTeaser extends StatelessWidget {
+  const _ShopTeaser();
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppScope.of(context);
+    final c = s.c;
+    final items = [...s.shopItems]..sort((a, b) => a.price.compareTo(b.price));
+    final goal = items.firstWhere((x) => x.price > s.st.xp, orElse: () => items.last);
+    final share = goal.price == 0 ? 1.0 : (s.st.xp / goal.price).clamp(0.0, 1.0).toDouble();
+    return AppCard(
+      key: const ValueKey('shop-teaser'),
+      onTap: () => s.go('shop'),
+      padding: const EdgeInsets.all(S.x4),
+      child: Row(children: [
+        ShopImage(goal, size: 76),
+        const SizedBox(width: S.x4),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(s.t('shop_title'), style: AppType.caption.copyWith(color: c.accentText, fontWeight: w8)),
+            const SizedBox(height: 2),
+            Text(s.tr(goal.name), maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: AppType.headline.copyWith(color: c.text)),
+            const SizedBox(height: S.x2),
+            AppProgress(share, height: 6, gradient: c.yellowGradient),
+            const SizedBox(height: 4),
+            Text('${s.st.xp} / ${goal.price} XP', style: AppType.caption.copyWith(color: c.text2)),
+          ]),
+        ),
+        const SizedBox(width: S.x2),
+        Icon(Icons.chevron_right_rounded, color: c.text3),
       ]),
     );
   }

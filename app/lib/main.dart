@@ -6,9 +6,13 @@ import 'config.dart';
 import 'screens/auth.dart';
 import 'screens/courses.dart';
 import 'screens/home.dart';
+import 'screens/intro.dart';
+import 'screens/lesson.dart';
 import 'screens/play.dart';
 import 'screens/profile.dart';
+import 'screens/profile_form.dart';
 import 'screens/ranking.dart';
+import 'screens/shop.dart';
 import 'screens/teacher.dart';
 import 'state.dart';
 import 'theme.dart';
@@ -82,18 +86,24 @@ class RootScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
     final Widget screen;
-    if (!s.ready) {
+    if (!s.introDone && !s.testMode) {
+      screen = IntroVideo(key: const ValueKey('intro'), onDone: s.finishIntro);
+    } else if (!s.ready) {
       screen = const SplashScreen(key: ValueKey('splash'));
     } else if (!s.online && s.mode != 'offline') {
       screen = const AuthScreen(key: ValueKey('auth'));
+    } else if (s.needsProfile) {
+      screen = const ProfileSetupScreen(key: ValueKey('setup'));
+    } else if (s.needsPlacement) {
+      screen = const LessonScreen.placement(key: ValueKey('placement'));
     } else {
       screen = const HomeShell(key: ValueKey('home'));
     }
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: (s.isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
+      value: (s.isDark || !s.introDone ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
           .copyWith(statusBarColor: Colors.transparent, systemNavigationBarColor: Colors.transparent),
       child: AnimatedSwitcher(
-        duration: Motion.of(context, Motion.slow),
+        duration: Motion.of(context, const Duration(milliseconds: 600)),
         switchInCurve: Motion.curve,
         switchOutCurve: Curves.easeInCubic,
         child: screen,
@@ -174,14 +184,40 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Ertasi kuni ochilsa — kunlik vazifalar yangilanadi.
     // Если приложение открыли на следующий день — обновляем задания дня.
-    if (state == AppLifecycleState.resumed) AppScope.read(context).refreshDay();
+    if (state == AppLifecycleState.resumed) {
+      AppScope.read(context).refreshDay();
+      _showNotice();
+    }
+  }
+
+  /// Test bekor qilingani haqida xabar / сообщение об отменённом тесте.
+  void _showNotice() {
+    final s = AppScope.read(context);
+    if (s.pendingNotice.isEmpty) return;
+    final text = s.pendingNotice;
+    s.pendingNotice = '';
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final c = s.c;
+      showAppSheet<void>(context, builder: (ctx) {
+        return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Center(child: IconTile(Icons.block_rounded, size: 60, circle: true, bg: c.dangerSoft, color: c.danger)),
+          const SizedBox(height: S.x4),
+          Text(s.t('test_cancelled_title'), textAlign: TextAlign.center, style: AppType.title3.copyWith(color: c.text)),
+          const SizedBox(height: S.x2),
+          Text(text, textAlign: TextAlign.center, style: AppType.subhead.copyWith(color: c.text2)),
+          const SizedBox(height: S.x5),
+          AppButton(s.t('ok'), key: const ValueKey('notice-ok'), expand: true, onPressed: () => Navigator.of(ctx).pop()),
+        ]);
+      });
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
     final tabs = s.tabs;
-    final tab = tabs.contains(s.tab) || s.tab == 'profile' ? s.tab : 'home';
+    final tab = tabs.contains(s.tab) || s.tab == 'profile' || s.tab == 'shop' ? s.tab : 'home';
 
     final Widget body = switch (tab) {
       'courses' => const CoursesTab(),
@@ -189,6 +225,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       'ranking' => const RankingTab(),
       'teacher' => const TeacherTab(),
       'profile' => const ProfileTab(),
+      'shop' => const ShopTab(),
       _ => const HomeTab(),
     };
 

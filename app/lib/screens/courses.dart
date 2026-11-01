@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../lessons.dart';
+import '../progress.dart';
 import '../state.dart';
 import '../theme.dart';
 import '../widgets.dart';
@@ -42,6 +43,7 @@ class _CoursePicker extends StatelessWidget {
       child: Row(children: [
         for (final x in kCourses) ...[
           Pressable(
+            key: ValueKey('course-${x.id}'),
             onTap: () => s.pickCourse(x.id),
             scale: 0.95,
             child: AnimatedContainer(
@@ -82,7 +84,7 @@ class _CourseHero extends StatelessWidget {
     final col = courseColor(course, c);
     final on = onColor(col);
     final soft = on == kWhite ? const Color(0xDDFFFFFF) : const Color(0xB3111111);
-    final d = s.progressOf(course), n = course.lessons.length;
+    final d = s.progressOf(course), n = s.lessonsOf(course).length;
     return AnimatedContainer(
       duration: Motion.of(context, Motion.slow),
       curve: Motion.curve,
@@ -125,7 +127,7 @@ class _CourseHero extends StatelessWidget {
         const SizedBox(height: S.x5),
         Row(children: [
           Expanded(
-            child: AppProgress(d / n,
+            child: AppProgress(n == 0 ? 0 : d / n,
                 height: 8,
                 color: on,
                 track: on == kWhite ? const Color(0x38FFFFFF) : const Color(0x1F000000)),
@@ -150,8 +152,8 @@ class _Path extends StatelessWidget {
     final cur = s.nextLesson(course);
     const offsets = [0.0, 56.0, 112.0, 56.0];
     final items = <Widget>[];
-    for (var i = 0; i < course.lessons.length; i++) {
-      final l = course.lessons[i];
+    for (var i = 0; i < s.lessonsOf(course).length; i++) {
+      final l = s.lessonsOf(course)[i];
       final done = st.isDone(l.id);
       final open = s.unlocked(course, i);
       final isCur = cur != null && cur.id == l.id;
@@ -165,6 +167,7 @@ class _Path extends StatelessWidget {
       items.add(Padding(
         padding: EdgeInsets.only(left: offsets[i % 4]),
         child: Pressable(
+          key: ValueKey('lesson-${l.id}'),
           onTap: open ? () => openLesson(context, l.id) : null,
           scale: 0.97,
           child: Row(children: [
@@ -185,7 +188,7 @@ class _Path extends StatelessWidget {
           ]),
         ),
       ));
-      if (i < course.lessons.length - 1) {
+      if (i < s.lessonsOf(course).length - 1) {
         items.add(Padding(
           padding: EdgeInsets.only(left: (offsets[i % 4] + offsets[(i + 1) % 4]) / 2 + 33, top: 6, bottom: 6),
           child: Column(children: [
@@ -287,8 +290,8 @@ class _Chest extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
     final c = s.c;
-    final d = s.progressOf(course), n = course.lessons.length;
-    final allDone = d == n;
+    final d = s.progressOf(course), n = s.lessonsOf(course).length;
+    final allDone = n > 0 && d == n;
     final opened = s.st.chests.contains(course.id);
     final ready = allDone && !opened;
     return AppCard(
@@ -309,14 +312,14 @@ class _Chest extends StatelessWidget {
             Text(s.t('chest'), style: AppType.headline.copyWith(color: c.text)),
             const SizedBox(height: 2),
             Text(
-              opened ? s.t('chest_done') : (allDone ? '+50' : s.t('chest_locked')),
+              opened ? s.t('chest_done') : (allDone ? '+$kChestXp XP' : s.t('chest_locked')),
               style: AppType.footnote.copyWith(color: c.text2),
             ),
           ]),
         ),
         if (ready)
           AppButton(s.t('chest_open'),
-              onPressed: () => s.chest(course), kind: BtnKind.success, height: 42, icon: Icons.diamond_rounded),
+              onPressed: () => s.chest(course), kind: BtnKind.success, height: 42, icon: Icons.bolt_rounded),
       ]),
     );
   }

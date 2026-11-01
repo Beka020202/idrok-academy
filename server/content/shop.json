@@ -1,0 +1,110 @@
+[
+ {
+  "id": "pen",
+  "price": 2000,
+  "name": {
+   "uz": "Brendli ruchka",
+   "ru": "Фирменная ручка"
+  },
+  "desc": {
+   "uz": "Idrok logotipli qora ruchka",
+   "ru": "Чёрная ручка с логотипом Idrok"
+  }
+ },
+ {
+  "id": "notebook",
+  "price": 3500,
+  "name": {
+   "uz": "Daftar",
+   "ru": "Тетрадь"
+  },
+  "desc": {
+   "uz": "Qattiq muqovali daftar",
+   "ru": "Тетрадь в твёрдой обложке"
+  }
+ },
+ {
+  "id": "mug",
+  "price": 6000,
+  "name": {
+   "uz": "Krujka",
+   "ru": "Кружка"
+  },
+  "desc": {
+   "uz": "Oq keramik krujka",
+   "ru": "Белая керамическая кружка"
+  }
+ },
+ {
+  "id": "bottle",
+  "price": 8000,
+  "name": {
+   "uz": "Suv idishi",
+   "ru": "Бутылка для воды"
+  },
+  "desc": {
+   "uz": "Metall termos-idish",
+   "ru": "Металлическая термобутылка"
+  }
+ },
+ {
+  "id": "cap",
+  "price": 10000,
+  "name": {
+   "uz": "Kepka",
+   "ru": "Кепка"
+  },
+  "desc": {
+   "uz": "Qora kepka, oldida logotip",
+   "ru": "Чёрная кепка с логотипом спереди"
+  }
+ },
+ {
+  "id": "backpack",
+  "price": 25000,
+  "name": {
+   "uz": "Ryukzak",
+   "ru": "Рюкзак"
+  },
+  "desc": {
+   "uz": "Qora ryukzak, orqasida katta Idrok logotipi",
+   "ru": "Чёрный рюкзак с большим логотипом Idrok на спине"
+  }
+ },
+ {
+  "id": "headphones",
+  "price": 50000,
+  "name": {
+   "uz": "Quloqchin",
+   "ru": "Наушники"
+  },
+  "desc": {
+   "uz": "Simsiz quloqchinlar",
+   "ru": "Беспроводные наушники"
+  }
+ },
+ {
+  "id": "tablet",
+  "price": 120000,
+  "name": {
+   "uz": "Planshet",
+   "ru": "Планшет"
+  },
+  "desc": {
+   "uz": "O‘qish uchun planshet",
+   "ru": "Планшет для учёбы"
+  }
+ },
+ {
+  "id": "laptop",
+  "price": 250000,
+  "name": {
+   "uz": "Noutbuk",
+   "ru": "Ноутбук"
+  },
+  "desc": {
+   "uz": "Dasturlash uchun noutbuk",
+   "ru": "Ноутбук для программирования"
+  }
+ }
+]

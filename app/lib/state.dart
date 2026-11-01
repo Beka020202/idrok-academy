@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api.dart';
@@ -14,6 +16,41 @@ import 'widgets.dart' show AppToast;
 
 const String _prefsKey = 'kodla.prefs';
 
+/// Do‘kon mahsuloti / товар магазина.
+class ShopItem {
+  final String id;
+  final int price;
+  final Tr name, desc;
+  const ShopItem(this.id, this.price, this.name, this.desc);
+  String get image => 'assets/shop/$id.png';
+
+  factory ShopItem.fromJson(Map<String, dynamic> j) {
+    Tr tr(Object? v) => v is Map ? Tr('${v['uz'] ?? ''}', '${v['ru'] ?? v['uz'] ?? ''}') : const Tr('', '');
+    return ShopItem('${j['id']}', (j['price'] as num?)?.toInt() ?? 0, tr(j['name']), tr(j['desc']));
+  }
+}
+
+/// Buyurtma / заказ.
+class ShopOrder {
+  final int id, price;
+  final String itemId, status;
+  final double ts;
+  final String name, school, city, username;
+  const ShopOrder(this.id, this.itemId, this.price, this.status, this.ts,
+      {this.name = '', this.school = '', this.city = '', this.username = ''});
+  factory ShopOrder.fromJson(Map<String, dynamic> j) => ShopOrder(
+        (j['id'] as num?)?.toInt() ?? 0,
+        '${j['item_id']}',
+        (j['price'] as num?)?.toInt() ?? 0,
+        '${j['status']}',
+        (j['ts'] as num?)?.toDouble() ?? 0,
+        name: '${j['name'] ?? ''}',
+        school: '${j['school'] ?? ''}',
+        city: '${j['city'] ?? ''}',
+        username: '${j['username'] ?? ''}',
+      );
+}
+
 /// Ilovaning butun holati / всё состояние приложения.
 class AppState extends ChangeNotifier {
   final navigatorKey = GlobalKey<NavigatorState>();
@@ -22,7 +59,14 @@ class AppState extends ChangeNotifier {
   SharedPreferences? _sp;
   bool ready = false;
 
-  // Sozlamalar / настройки (diskda saqlanadi / хранятся на устройстве)
+  /// Ochilish videosi tugadimi / закончилось ли вступительное видео.
+  bool introDone = false;
+
+  /// Testlarda: video, tarmoq va qurilma funksiyalari o‘chiriladi.
+  /// В тестах: видео, сеть и функции устройства отключены.
+  bool testMode = false;
+
+  // Sozlamalar / настройки (qurilmada saqlanadi / хранятся на устройстве)
   String lang = 'uz';
   String theme = 'system'; // system | light | dark
   Brightness platformBrightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
@@ -31,7 +75,12 @@ class AppState extends ChangeNotifier {
   String mode = ''; // '' | online | offline
   Map<String, dynamic> offlineState = {};
   String courseId = 'html';
-  String localName = '';
+
+  // Oflayn profil / офлайн-профиль
+  String localName = '', localSchool = '', localCity = '';
+
+  /// O‘z rasmim (kesh) / моё фото (кэш)
+  Uint8List? myPhoto;
 
   Map<String, dynamic>? user; // serverdagi foydalanuvchi / пользователь сервера
   GameState st = normalize(null);
@@ -44,6 +93,12 @@ class AppState extends ChangeNotifier {
   String playCode = kPlaygroundStart;
   String playInputs = '5';
   String playOut = '';
+
+  // Do‘kon / магазин
+  List<ShopItem> shopItems = [];
+
+  /// Test bekor qilinganini qaytganda ko‘rsatish / показать при возврате, что тест отменён.
+  String pendingNotice = '';
 
   // ---------------------------------------------------------------- yordamchilar / помощники
   bool get online => user != null;
@@ -67,18 +122,36 @@ class AppState extends ChangeNotifier {
     return localName;
   }
 
+  String get school => online ? '${user!['school'] ?? ''}' : localSchool;
+  String get city => online ? '${user!['city'] ?? ''}' : localCity;
   String get username => online ? '${user!['username'] ?? ''}' : '';
+  String get league => st.league;
+  String get leagueName => tr(kLeagueNames[st.league] ?? kLeagueNames['beginner']!);
+
+  /// Oflayn rejimda profil hali to‘ldirilmagan / офлайн-профиль ещё не заполнен.
+  bool get needsProfile => !online && mode == 'offline' && localName.trim().isEmpty;
+
+  /// Isinish mashqi (liga aniqlash) kerak / нужна разминка (определение лиги).
+  bool get needsPlacement => !isTeacher && st.league.isEmpty;
+
+  /// Boshqa o‘quvchi rasmi manzili / адрес фото другого ученика.
+  String photoUrl(String user) => '${api.base}/api/photo/${Uri.encodeComponent(user)}';
+  Map<String, String> get authHeaders => token.isEmpty ? const {} : {'Authorization': 'Bearer $token'};
 
   Course get course => kCourses.firstWhere((x) => x.id == courseId, orElse: () => kCourses.first);
-  int progressOf(Course co) => co.lessons.where((l) => st.isDone(l.id)).length;
+  List<Lesson> lessonsOf(Course co) => co.lessonsFor(st.league);
+  int progressOf(Course co) => lessonsOf(co).where((l) => st.isDone(l.id)).length;
   Lesson? nextLesson(Course co) {
-    for (final l in co.lessons) {
+    for (final l in lessonsOf(co)) {
       if (!st.isDone(l.id)) return l;
     }
     return null;
   }
 
-  bool unlocked(Course co, int i) => i == 0 || st.isDone(co.lessons[i - 1].id);
+  bool unlocked(Course co, int i) {
+    final ls = lessonsOf(co);
+    return i == 0 || st.isDone(ls[i - 1].id);
+  }
 
   List<String> get tabs => ['home', 'courses', 'play', 'ranking', isTeacher ? 'teacher' : 'profile'];
 
@@ -96,12 +169,12 @@ class AppState extends ChangeNotifier {
       final raw = _sp!.getString(_prefsKey);
       if (raw != null && raw.isNotEmpty) _loadPrefs(jsonDecode(raw));
     } catch (_) {
-      // buzilgan sozlamalar — standart qiymatlar bilan davom etamiz
-      // повреждённые настройки — продолжаем со значениями по умолчанию
+      // buzilgan sozlamalar — standart qiymatlar bilan / повреждённые настройки — по умолчанию
     }
     api = Api(server, token: token.isEmpty ? null : token);
     st = normalize(offlineState);
-    if (mode == 'online' && token.isNotEmpty) {
+    await loadShop();
+    if (mode == 'online' && token.isNotEmpty && !testMode) {
       try {
         final res = await api.call('/api/me');
         _setUser(res['user']);
@@ -119,6 +192,22 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> loadShop() async {
+    try {
+      final raw = await rootBundle.loadString('assets/content/shop.json');
+      shopItems = [for (final j in jsonDecode(raw) as List) ShopItem.fromJson(Map<String, dynamic>.from(j as Map))];
+    } catch (_) {
+      shopItems = [];
+    }
+  }
+
+  ShopItem? shopItem(String id) {
+    for (final i in shopItems) {
+      if (i.id == id) return i;
+    }
+    return null;
+  }
+
   void _loadPrefs(Object? raw) {
     if (raw is! Map) return;
     final Map j = raw;
@@ -132,6 +221,14 @@ class AppState extends ChangeNotifier {
     mode = s('mode', '');
     courseId = s('course', 'html');
     localName = s('name', '');
+    localSchool = s('school', '');
+    localCity = s('city', '');
+    final ph = s('photo', '');
+    if (ph.isNotEmpty) {
+      try {
+        myPhoto = base64Decode(ph);
+      } catch (_) {}
+    }
     final os = j['offline_state'];
     offlineState = os is Map ? Map<String, dynamic>.from(os) : {};
   }
@@ -147,6 +244,9 @@ class AppState extends ChangeNotifier {
       'offline_state': offlineState,
       'course': courseId,
       'name': localName,
+      'school': localSchool,
+      'city': localCity,
+      'photo': myPhoto == null ? '' : base64Encode(myPhoto!),
     };
     try {
       _sp ??= await SharedPreferences.getInstance();
@@ -158,6 +258,8 @@ class AppState extends ChangeNotifier {
     if (u is! Map) return;
     user = Map<String, dynamic>.from(u);
     st = normalize(user!['state']);
+    final lg = '${user!['league'] ?? ''}';
+    if (lg.isNotEmpty) st.league = lg;
   }
 
   // ---------------------------------------------------------------- kirish / вход
@@ -166,18 +268,36 @@ class AppState extends ChangeNotifier {
     required bool register,
     required String username,
     required String password,
-    required String name,
     required String serverUrl,
+    String name = '',
+    String school = '',
+    String city = '',
+    Uint8List? photo,
   }) async {
     if (username.trim().length < 3 || password.length < 4) return t('err_short');
+    if (register) {
+      if (name.trim().isEmpty || school.trim().isEmpty || city.trim().isEmpty) return t('err_profile');
+      if (photo == null) return t('err_photo');
+    }
     if (busy) return null;
     busy = true;
     notifyListeners();
     final srv = serverUrl.trim().isEmpty ? kDefaultServer : serverUrl.trim();
     final a = Api(srv);
     try {
-      final res = await a.call(register ? '/api/register' : '/api/login',
-          {'username': username.trim(), 'password': password, 'name': name.trim()});
+      final res = await a.call(
+          register ? '/api/register' : '/api/login',
+          {
+            'username': username.trim(),
+            'password': password,
+            if (register) ...{
+              'name': name.trim(),
+              'school': school.trim(),
+              'city': city.trim(),
+              'photo': base64Encode(photo!),
+            },
+          },
+          const Duration(seconds: 40));
       a.token = '${res['token']}';
       api = a;
       server = srv;
@@ -185,11 +305,19 @@ class AppState extends ChangeNotifier {
       mode = 'online';
       bootError = '';
       tab = 'home';
+      if (register) myPhoto = photo;
       _setUser(res['user']);
       await savePrefs();
       return null;
     } on ApiError catch (e) {
-      return t(switch (e.code) { 'conn' => 'err_conn', 'taken' => 'err_taken', 'short' => 'err_short', _ => 'err_auth' });
+      return t(switch (e.code) {
+        'conn' => 'err_conn',
+        'taken' => 'err_taken',
+        'short' => 'err_short',
+        'photo' => 'err_photo',
+        'profile' => 'err_profile',
+        _ => 'err_auth'
+      });
     } finally {
       busy = false;
       notifyListeners();
@@ -221,10 +349,62 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ---------------------------------------------------------------- profil / профиль
+  /// Oflayn profilni saqlash / сохранить офлайн-профиль.
+  Future<void> saveLocalProfile({required String name, required String school, required String city, Uint8List? photo}) async {
+    localName = name.trim().length > 40 ? name.trim().substring(0, 40) : name.trim();
+    localSchool = school.trim();
+    localCity = city.trim();
+    if (photo != null) myPhoto = photo;
+    await savePrefs();
+    notifyListeners();
+  }
+
+  /// Ism, maktab, shahar / имя, школа, город.
+  Future<void> updateProfile({String? name, String? school, String? city}) async {
+    if (online) {
+      try {
+        final res = await api.call('/api/profile', {
+          if (name != null) 'name': name.trim(),
+          if (school != null) 'school': school.trim(),
+          if (city != null) 'city': city.trim(),
+        });
+        _setUser(res['user']);
+      } on ApiError {
+        toast(t('err_conn'), icon: Icons.cloud_off_rounded);
+      }
+    } else {
+      if (name != null && name.trim().isNotEmpty) localName = name.trim();
+      if (school != null) localSchool = school.trim();
+      if (city != null) localCity = city.trim();
+      await savePrefs();
+    }
+    notifyListeners();
+  }
+
+  /// Profil rasmini yangilash / обновить фото профиля.
+  Future<bool> updatePhoto(Uint8List bytes) async {
+    if (online) {
+      try {
+        final res = await api.call('/api/photo', {'photo': base64Encode(bytes)}, const Duration(seconds: 40));
+        _setUser(res['user']);
+      } on ApiError {
+        toast(t('err_conn'), icon: Icons.cloud_off_rounded);
+        return false;
+      }
+    }
+    myPhoto = bytes;
+    PaintingBinding.instance.imageCache.clear();
+    await savePrefs();
+    notifyListeners();
+    return true;
+  }
+
   // ---------------------------------------------------------------- o‘yin amallari / игровые действия
   /// Onlayn — serverga, oflayn — shu yerda / онлайн — на сервер, офлайн — локально.
   Future<Map<String, dynamic>?> _serverOrLocal(
-      String path, Map<String, Object?> payload, Map<String, dynamic> Function() local) async {
+      String path, Map<String, Object?> payload, Map<String, dynamic> Function() local,
+      {bool quiet = false}) async {
     if (online) {
       try {
         final res = await api.call(path, payload);
@@ -232,10 +412,14 @@ class AppState extends ChangeNotifier {
         notifyListeners();
         return res;
       } on ApiError catch (e) {
-        if (e.code == 'auth') {
-          toast(t('err_auth'), icon: Icons.lock_rounded);
-        } else {
-          toast(e.code == 'conn' ? t('err_conn') : t('error'), icon: Icons.cloud_off_rounded);
+        if (!quiet) {
+          if (e.code == 'auth') {
+            toast(t('err_auth'), icon: Icons.lock_rounded);
+          } else if (e.code == 'not_enough') {
+            toast(t('not_enough'), icon: Icons.bolt_rounded);
+          } else {
+            toast(e.code == 'conn' ? t('err_conn') : t('error'), icon: Icons.cloud_off_rounded);
+          }
         }
         return null;
       }
@@ -250,13 +434,13 @@ class AppState extends ChangeNotifier {
     if (busy) return;
     busy = true;
     final res = await _serverOrLocal('/api/claim', {'quest_id': questId}, () {
-      final (s, g) = claimQuest(st, questId);
+      final (s, x) = claimQuest(st, questId);
       st = s;
-      return {'gems': g};
+      return {'xp': x};
     });
     busy = false;
-    final g = (res?['gems'] as num?)?.toInt() ?? 0;
-    if (g > 0) toast('+$g', icon: Icons.diamond_rounded);
+    final x = (res?['xp'] as num?)?.toInt() ?? 0;
+    if (x > 0) toast('+$x XP', icon: Icons.bolt_rounded);
     notifyListeners();
   }
 
@@ -264,72 +448,134 @@ class AppState extends ChangeNotifier {
     if (busy) return;
     busy = true;
     final res = await _serverOrLocal('/api/chest', {'course_id': co.id}, () {
-      final (s, g) = openChest(st, co.id, co.lessonIds);
+      final (s, x) = openChest(st, co.id, co.idsFor(st.league));
       st = s;
-      return {'gems': g};
+      return {'xp': x};
     });
     busy = false;
-    final g = (res?['gems'] as num?)?.toInt() ?? 0;
-    if (g > 0) toast('${t('chest')}: +$g', icon: Icons.redeem_rounded);
+    final x = (res?['xp'] as num?)?.toInt() ?? 0;
+    if (x > 0) toast('${t('chest')}: +$x XP', icon: Icons.redeem_rounded);
     notifyListeners();
   }
 
-  Future<void> pickAvatar(String emoji) async {
-    if (busy) return;
-    if (!st.owned.contains(emoji) && st.gems < (kAvatars[emoji] ?? 0)) {
-      toast(t('not_enough'), icon: Icons.diamond_rounded);
-      return;
+  /// Isinish mashqi natijasi -> liga / результат разминки -> лига.
+  Future<void> submitPlacement(int points, double timeShare) async {
+    final league = leagueFor(points, timeShare);
+    final res = await _serverOrLocal('/api/placement', {'points': points, 'time_share': timeShare, 'league': league}, () {
+      final (s, x) = setLeague(st, league);
+      st = s;
+      return {'xp': x};
+    });
+    if (res == null && online) {
+      // Server javob bermasa, vaqtincha mahalliy / если сервер не ответил — временно локально
+      final (s, _) = setLeague(st, league);
+      st = s;
     }
-    busy = true;
-    await _serverOrLocal('/api/avatar', {'avatar': emoji}, () {
-      final (s, ok) = buyAvatar(st, emoji);
+    notifyListeners();
+  }
+
+  /// Test bekor qilindi (ilovadan chiqildi) / тест отменён (вышли из приложения).
+  Future<void> cancelLessonTest(Lesson l) async {
+    pendingNotice = t('test_cancelled');
+    await _serverOrLocal('/api/cancel', {'lesson_id': l.id}, () {
+      st = cancelTest(st, l.id);
+      return {};
+    }, quiet: true);
+    if (online && (st.retries[l.id] ?? 0) == 0) st = cancelTest(st, l.id);
+    notifyListeners();
+  }
+
+  /// AI yordamchidan foydalanish (XP sarflanadi) / использование AI-помощника (тратит XP).
+  Future<bool> payForHelper() async {
+    if (st.xp < kHelperCost) {
+      toast(t('not_enough'), icon: Icons.bolt_rounded);
+      return false;
+    }
+    final res = await _serverOrLocal('/api/helper', {}, () {
+      final (s, ok) = spendXp(st, kHelperCost);
       st = s;
       return {'ok': ok};
     });
-    busy = false;
-    notifyListeners();
+    return res != null && (res['ok'] ?? true) != false;
   }
 
   /// null — saqlab bo‘lmadi / не удалось сохранить.
-  Future<LessonResult?> finishLesson(Lesson l, bool perfect, int bestCombo) async {
-    final res = await _serverOrLocal(
-        '/api/complete', {'lesson_id': l.id, 'perfect': perfect, 'best_combo': bestCombo}, () {
-      final (s, r) = completeLesson(st, l.id, l.xp, perfect: perfect, bestCombo: bestCombo);
+  Future<LessonResult?> finishLesson(Lesson l,
+      {required bool perfect, required int bestCombo, required int correct, required int total, required double timeShare}) async {
+    final res = await _serverOrLocal('/api/complete', {
+      'lesson_id': l.id,
+      'perfect': perfect,
+      'best_combo': bestCombo,
+      'correct': correct,
+      'total': total,
+      'time_share': timeShare,
+    }, () {
+      final (s, r) = completeLesson(st, l.id, l.xp,
+          perfect: perfect, bestCombo: bestCombo, correct: correct, total: total, timeShare: timeShare);
       st = s;
       return {
-        'result': {
-          'xp': r.xp,
-          'gems': r.gems,
-          'first': r.first,
-          'perfect': r.perfect,
-          'level_up': r.levelUp,
-          'level': r.level
-        }
+        'result': {'xp': r.xp, 'first': r.first, 'perfect': r.perfect, 'level_up': r.levelUp, 'level': r.level}
       };
     });
     if (res == null) return null;
     return LessonResult.fromJson(res['result']);
   }
 
-  Future<void> saveName(String name) async {
-    final n = name.trim();
-    if (online) {
-      if (n == '${user!['name'] ?? ''}') return;
-      try {
-        final res = await api.call('/api/name', {'name': n});
-        _setUser(res['user']);
-      } on ApiError {
-        toast(t('err_conn'), icon: Icons.cloud_off_rounded);
-      }
-    } else {
-      localName = n.length > 30 ? n.substring(0, 30) : n;
-      await savePrefs();
+  // ---------------------------------------------------------------- do‘kon / магазин
+  /// Sotib olish (faqat onlayn — haqiqiy sovg‘alar) / покупка (только онлайн — реальные призы).
+  Future<bool> buy(ShopItem item) async {
+    if (!online) {
+      toast(t('shop_online'), icon: Icons.wifi_off_rounded);
+      return false;
     }
+    if (st.xp < item.price) {
+      toast(t('not_enough'), icon: Icons.bolt_rounded);
+      return false;
+    }
+    if (busy) return false;
+    busy = true;
     notifyListeners();
+    try {
+      final res = await api.call('/api/shop/buy', {'item_id': item.id});
+      _setUser(res['user']);
+      toast(t('order_done'), icon: Icons.check_circle_rounded);
+      return true;
+    } on ApiError catch (e) {
+      toast(e.code == 'not_enough' ? t('not_enough') : t('err_conn'), icon: Icons.cloud_off_rounded);
+      return false;
+    } finally {
+      busy = false;
+      notifyListeners();
+    }
+  }
+
+  Future<List<ShopOrder>> myOrders() async {
+    if (!online) return [];
+    final res = await api.call('/api/orders');
+    final rows = res['rows'];
+    return rows is List ? [for (final r in rows) if (r is Map) ShopOrder.fromJson(Map<String, dynamic>.from(r))] : [];
+  }
+
+  Future<List<ShopOrder>> teacherOrders() async {
+    final res = await api.call('/api/teacher/orders');
+    final rows = res['rows'];
+    return rows is List ? [for (final r in rows) if (r is Map) ShopOrder.fromJson(Map<String, dynamic>.from(r))] : [];
+  }
+
+  Future<bool> setOrderStatus(int id, String status) async {
+    try {
+      await api.call('/api/teacher/order', {'order_id': id, 'status': status});
+      return true;
+    } on ApiError {
+      toast(t('err_conn'), icon: Icons.cloud_off_rounded);
+      return false;
+    }
   }
 
   Future<void> resetProgress() async {
+    final lg = st.league;
     st = normalize(null);
+    st.league = lg;
     await savePrefs();
     notifyListeners();
   }
@@ -340,7 +586,13 @@ class AppState extends ChangeNotifier {
   bool allowWarmUp = true;
 
   void warmUp() {
-    if (allowWarmUp) warmUpRunner(server);
+    if (allowWarmUp && !testMode) warmUpRunner(server);
+  }
+
+  void finishIntro() {
+    if (introDone) return;
+    introDone = true;
+    notifyListeners();
   }
 
   // ---------------------------------------------------------------- sozlamalar / настройки
@@ -391,10 +643,8 @@ class AppState extends ChangeNotifier {
 class AppScope extends InheritedNotifier<AppState> {
   const AppScope({super.key, required AppState state, required super.child}) : super(notifier: state);
 
-  static AppState of(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<AppScope>()!.notifier!;
+  static AppState of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<AppScope>()!.notifier!;
 
   /// Qayta chizmasdan olish / получить без подписки на перерисовку.
-  static AppState read(BuildContext context) =>
-      context.getInheritedWidgetOfExactType<AppScope>()!.notifier!;
+  static AppState read(BuildContext context) => context.getInheritedWidgetOfExactType<AppScope>()!.notifier!;
 }

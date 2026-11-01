@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>html,body{margin:0;background:transparent}canvas{display:block}</style>
+<script type="importmap">
+{"imports":{"three":"./src/three/build/three.module.js","three/addons/":"./src/three/examples/jsm/"}}
+</script>
+</head><body>
+<script type="module">
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+const SIZE = 1024;
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+renderer.setSize(SIZE, SIZE);
+renderer.setClearColor(0x000000, 0);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.toneMappingExposure = 0.95;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+const BLUE = 0x0A6CFF, NAVY = 0x0A1226, SKY = 0x3FA9FF;
+const loader = new THREE.TextureLoader();
+const tex = {};
+async function load(name) {
+  const t = await loader.loadAsync(name);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8;
+  tex[name] = t;
+  return t;
+}
+const imgs = {};
+async function img(name) {
+  return new Promise(r => { const i = new Image(); i.onload = () => { imgs[name] = i; r(i); }; i.src = name; });
+}
+
+function decalMat(t, opts = {}) {
+  return new THREE.MeshPhysicalMaterial({
+    map: t, transparent: true, roughness: opts.roughness ?? 0.4, metalness: 0,
+    clearcoat: opts.clearcoat ?? 0, polygonOffset: true, polygonOffsetFactor: -4, depthWrite: false,
+  });
+}
+
+function canvasTex(w, h, draw) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+
+function screenTex(w, h) {
+  return canvasTex(w, h, (g, W, H) => {
+    const gr = g.createLinearGradient(0, 0, W * 0.4, H);
+    gr.addColorStop(0, '#2EA6FF'); gr.addColorStop(1, '#0047D6');
+    g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    const rg = g.createRadialGradient(W * 0.8, H * 0.1, 10, W * 0.8, H * 0.1, W * 0.9);
+    rg.addColorStop(0, 'rgba(191,240,255,0.45)'); rg.addColorStop(1, 'rgba(191,240,255,0)');
+    g.fillStyle = rg; g.fillRect(0, 0, W, H);
+    const L = imgs['logo_white.png'];
+    const lw = Math.min(W, H) * 0.5, lh = lw * L.height / L.width;
+    g.drawImage(L, (W - lw) / 2, (H - lh) / 2 - H * 0.03, lw, lh);
+  });
+}
+
+function makeScene() {
+  const scene = new THREE.Scene();
+  scene.environment = envTex;
+  const key = new THREE.DirectionalLight(0xffffff, 1.6);
+  key.position.set(-3, 6, 4);
+  key.castShadow = true;
+  key.shadow.mapSize.set(2048, 2048);
+  key.shadow.camera.left = -4; key.shadow.camera.right = 4; key.shadow.camera.top = 4; key.shadow.camera.bottom = -4;
+  key.shadow.radius = 8; key.shadow.bias = -0.0005;
+  scene.add(key);
+  const rim = new THREE.DirectionalLight(0xbfe0ff, 0.8);
+  rim.position.set(4, 3, -4);
+  scene.add(rim);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.15));
+  return scene;
+}
+
+function ground(scene, y, opacity = 0.22) {
+  const g = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.ShadowMaterial({ opacity }));
+  g.rotation.x = -Math.PI / 2; g.position.y = y; g.receiveShadow = true;
+  scene.add(g);
+}
+
+function shadowAll(o) { o.traverse(m => { if (m.isMesh && !m.material.transparent) { m.castShadow = true; m.receiveShadow = true; } }); }
+
+function cam(pos, target, fov = 30) {
+  const c = new THREE.PerspectiveCamera(fov, 1, 0.1, 100);
+  c.position.set(...pos); c.lookAt(new THREE.Vector3(...target));
+  return c;
+}
+
+// ------------------------------------------------------------------ mahsulotlar / товары
+const builders = {
+  pen() {
+    const s = makeScene(); const g = new THREE.Group();
+    const body = new THREE.MeshPhysicalMaterial({ color: BLUE, metalness: 0.35, roughness: 0.22, clearcoat: 1, clearcoatRoughness: 0.08 });
+    const chrome = new THREE.MeshPhysicalMaterial({ color: 0xffffff, metalness: 1, roughness: 0.12 });
+    const r = 0.13;
+    const b = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 2.1, 64), body); g.add(b);
+    const grip = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.02, r * 0.95, 0.5, 64), new THREE.MeshPhysicalMaterial({ color: NAVY, roughness: 0.6 }));
+    grip.position.y = -1.3; g.add(grip);
+    const cone = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.95, 0.03, 0.42, 64), chrome); cone.position.y = -1.76; g.add(cone);
+    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.03, 16, 16), chrome); tip.position.y = -1.97; g.add(tip);
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.04, r * 1.04, 0.22, 64), chrome); cap.position.y = 1.15; g.add(cap);
+    const top = new THREE.Mesh(new THREE.SphereGeometry(r * 1.04, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), chrome); top.position.y = 1.26; g.add(top);
+    const clip = new THREE.Mesh(new RoundedBoxGeometry(0.07, 0.95, 0.05, 3, 0.02), chrome);
+    clip.position.set(0, 0.78, r + 0.06); g.add(clip);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(r * 1.01, 0.012, 12, 64), chrome); ring.rotation.x = Math.PI / 2; ring.position.y = -1.05; g.add(ring);
+    // yozuv tana bo‘ylab / надпись вдоль корпуса
+    const W = imgs['word_white.png'];
+    const t = canvasTex(256, 1024, (c, w, h) => {
+      c.translate(w / 2, h / 2); c.rotate(-Math.PI / 2);
+      const lw = h * 0.62, lh = lw * W.height / W.width;
+      c.drawImage(W, -lw / 2, -lh / 2, lw, lh);
+    });
+    const dec = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.004, r * 1.004, 1.5, 64, 1, true, Math.PI / 2 - 0.9, 1.8), decalMat(t, { clearcoat: 1, roughness: 0.25 }));
+    dec.position.y = 0.05; dec.rotation.y = 0; g.add(dec);
+    g.rotation.set(0.15, -0.9, -0.62);
+    shadowAll(g); s.add(g); ground(s, -1.35, 0.18);
+    return [s, cam([0, 0.6, 6.4], [0, -0.05, 0], 30)];
+  },
+
+  notebook() {
+    const s = makeScene(); const g = new THREE.Group();
+    const cover = new THREE.MeshPhysicalMaterial({ color: BLUE, roughness: 0.55, sheen: 0.4, sheenColor: new THREE.Color(SKY) });
+    const W = 1.75, D = 2.4;
+    const bottom = new THREE.Mesh(new RoundedBoxGeometry(W, 0.05, D, 4, 0.02), cover); bottom.position.y = 0.025; g.add(bottom);
+    const pages = new THREE.Mesh(new THREE.BoxGeometry(W - 0.08, 0.2, D - 0.08), new THREE.MeshStandardMaterial({ color: 0xf6f3ea, roughness: 0.9 }));
+    pages.position.set(0.02, 0.15, 0); g.add(pages);
+    const lines = canvasTex(64, 512, (c, w, h) => { c.fillStyle = '#f6f3ea'; c.fillRect(0, 0, w, h); c.fillStyle = 'rgba(0,0,0,0.12)'; for (let y = 0; y < h; y += 4) c.fillRect(0, y, w, 1); });
+    pages.material = [
+      new THREE.MeshStandardMaterial({ map: lines, roughness: 0.9 }), new THREE.MeshStandardMaterial({ color: 0xf6f3ea }),
+      new THREE.MeshStandardMaterial({ color: 0xf6f3ea }), new THREE.MeshStandardMaterial({ color: 0xf6f3ea }),
+      new THREE.MeshStandardMaterial({ map: lines, roughness: 0.9 }), new THREE.MeshStandardMaterial({ map: lines, roughness: 0.9 }),
+    ];
+    const topC = new THREE.Mesh(new RoundedBoxGeometry(W, 0.05, D, 4, 0.02), cover); topC.position.y = 0.275; g.add(topC);
+    const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, D, 32, 1, false, Math.PI, Math.PI), cover);
+    spine.rotation.x = Math.PI / 2; spine.position.set(-W / 2, 0.15, 0); g.add(spine);
+    const band = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.31, D + 0.02), new THREE.MeshStandardMaterial({ color: NAVY, roughness: 0.7 }));
+    band.position.set(W / 2 - 0.22, 0.155, 0); g.add(band);
+    const L = tex['logo_white.png'];
+    const logo = new THREE.Mesh(new THREE.PlaneGeometry(1.05, 1.05 * L.image.height / L.image.width), decalMat(L, { roughness: 0.35 }));
+    logo.rotation.x = -Math.PI / 2; logo.position.set(-0.08, 0.302, -0.15); g.add(logo);
+    g.rotation.y = 0.45;
+    shadowAll(g); s.add(g); ground(s, 0, 0.25);
+    return [s, cam([0, 4.6, 3.9], [0, 0.1, 0], 34)];
+  },
+
+  mug() {
+    const s = makeScene(); const g = new THREE.Group();
+    const cer = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.05 });
+    const R = 0.66, H = 1.5;
+    const pts = [[0, 0], [R - 0.06, 0], [R, 0.05], [R, H], [R - 0.05, H + 0.02], [R - 0.09, H], [R - 0.09, 0.12], [0, 0.12]].map(p => new THREE.Vector2(p[0], p[1]));
+    const body = new THREE.Mesh(new THREE.LatheGeometry(pts, 96), cer); g.add(body);
+    const inner = new THREE.Mesh(new THREE.CylinderGeometry(R - 0.091, R - 0.091, 0.01, 64), new THREE.MeshPhysicalMaterial({ color: BLUE, roughness: 0.2, clearcoat: 1 }));
+    inner.position.y = 0.14; g.add(inner);
+    const innerWall = new THREE.Mesh(new THREE.CylinderGeometry(R - 0.092, R - 0.092, H - 0.14, 96, 1, true), new THREE.MeshPhysicalMaterial({ color: BLUE, roughness: 0.2, clearcoat: 1, side: THREE.BackSide }));
+    innerWall.position.y = 0.14 + (H - 0.14) / 2; g.add(innerWall);
+    const handle = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.075, 24, 64, Math.PI), cer);
+    handle.rotation.z = -Math.PI / 2; handle.position.set(R - 0.02, H * 0.52, 0); g.add(handle);
+    const L = tex['logo_blue.png'];
+    const dec = new THREE.Mesh(new THREE.CylinderGeometry(R + 0.003, R + 0.003, 0.95, 96, 1, true, -0.8, 1.6), decalMat(L, { clearcoat: 1, roughness: 0.15 }));
+    dec.position.y = H * 0.52; g.add(dec);
+    g.rotation.y = -0.25;
+    shadowAll(g); s.add(g); ground(s, 0, 0.22);
+    return [s, cam([1.1, 2.4, 4.6], [0.15, 0.72, 0], 32)];
+  },
+
+  bottle() {
+    const s = makeScene(); const g = new THREE.Group();
+    const paint = new THREE.MeshPhysicalMaterial({ color: BLUE, metalness: 0.25, roughness: 0.42, clearcoat: 0.6, clearcoatRoughness: 0.3 });
+    const steel = new THREE.MeshPhysicalMaterial({ color: 0xdfe5ee, metalness: 1, roughness: 0.18 });
+    const R = 0.46;
+    const pts = [];
+    pts.push(new THREE.Vector2(0, 0));
+    for (let i = 0; i <= 8; i++) { const a = i / 8 * Math.PI / 2; pts.push(new THREE.Vector2(R - 0.06 + Math.sin(a) * 0.06, 0.06 - Math.cos(a) * 0.06)); }
+    pts.push(new THREE.Vector2(R, 2.0));
+    for (let i = 1; i <= 16; i++) { const a = i / 16; pts.push(new THREE.Vector2(R - (R - 0.3) * (1 - Math.cos(a * Math.PI)) / 2, 2.0 + a * 0.38)); }
+    pts.push(new THREE.Vector2(0.3, 2.42)); pts.push(new THREE.Vector2(0, 2.42));
+    const body = new THREE.Mesh(new THREE.LatheGeometry(pts, 96), paint); g.add(body);
+    const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.315, 0.315, 0.06, 64), steel); ring.position.y = 2.45; g.add(ring);
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.32, 0.36, 64), new THREE.MeshPhysicalMaterial({ color: NAVY, roughness: 0.5 })); cap.position.y = 2.66; g.add(cap);
+    const loop = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.04, 16, 48), new THREE.MeshPhysicalMaterial({ color: NAVY, roughness: 0.5 }));
+    loop.position.set(0, 2.92, 0); g.add(loop);
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(R + 0.002, R + 0.002, 0.08, 96, 1, true), steel); base.position.y = 0.1; g.add(base);
+    const L = tex['logo_white.png'];
+    const dec = new THREE.Mesh(new THREE.CylinderGeometry(R + 0.003, R + 0.003, 0.95, 96, 1, true, -0.95, 1.9), decalMat(L, { roughness: 0.3, clearcoat: 0.6 }));
+    dec.position.y = 1.1; g.add(dec);
+    g.rotation.y = -0.2;
+    shadowAll(g); s.add(g); ground(s, 0, 0.22);
+    return [s, cam([0.8, 2.3, 6.4], [0, 1.42, 0], 32)];
+  },
+
+  cap() {
+    const s = makeScene(); const g = new THREE.Group();
+    const fab = new THREE.MeshPhysicalMaterial({ color: NAVY, roughness: 0.92, sheen: 1, sheenRoughness: 0.6, sheenColor: new THREE.Color(0x3a4a7a) });
+    const R = 0.95, sy = 0.78;
+    const crown = new THREE.Mesh(new THREE.SphereGeometry(R, 96, 48, 0, Math.PI * 2, 0, Math.PI / 2), fab);
+    crown.scale.y = sy; g.add(crown);
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(R, R, 0.08, 96, 1, true), new THREE.MeshPhysicalMaterial({ color: BLUE, roughness: 0.8 }));
+    band.position.y = 0.04; band.scale.set(1.003, 1, 1.003); g.add(band);
+    const shape = new THREE.Shape();
+    shape.moveTo(-0.9, -0.1); shape.quadraticCurveTo(-0.95, 1.05, 0, 1.25); shape.quadraticCurveTo(0.95, 1.05, 0.9, -0.1); shape.lineTo(-0.9, -0.1);
+    const brimG = new THREE.ExtrudeGeometry(shape, { depth: 0.035, bevelEnabled: true, bevelThickness: 0.015, bevelSize: 0.015, bevelSegments: 3, curveSegments: 48 });
+    const brim = new THREE.Mesh(brimG, fab); brim.rotation.x = Math.PI / 2 + 0.16; brim.position.set(0, 0.06, 0.25); g.add(brim);
+    const under = new THREE.Mesh(new THREE.ShapeGeometry(shape, 48), new THREE.MeshPhysicalMaterial({ color: BLUE, roughness: 0.8, side: THREE.DoubleSide }));
+    under.rotation.x = Math.PI / 2 + 0.16; under.position.set(0, 0.06 - 0.052, 0.25 - 0.008); under.scale.set(0.97, 0.97, 1); g.add(under);
+    const btn = new THREE.Mesh(new THREE.SphereGeometry(0.07, 24, 16), fab); btn.position.y = R * sy + 0.01; btn.scale.y = 0.6; g.add(btn);
+    for (let k = 0; k < 6; k++) {
+      const seam = new THREE.Mesh(new THREE.TorusGeometry(R + 0.002, 0.006, 6, 96, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x1b2440, roughness: 0.9 }));
+      seam.rotation.y = k * Math.PI / 3; seam.scale.y = sy; g.add(seam);
+    }
+    const L = tex['logo_white.png'];
+    const dec = new THREE.Mesh(new THREE.SphereGeometry(R + 0.006, 64, 32, Math.PI / 2 - 0.62, 1.24, 0.38, 0.86), decalMat(L, { roughness: 0.6 }));
+    dec.scale.y = sy; g.add(dec);
+    g.rotation.set(0.06, -0.45, 0);
+    shadowAll(g); s.add(g); ground(s, 0, 0.22);
+    return [s, cam([0.4, 2.0, 4.6], [0, 0.42, 0.2], 32)];
+  },
+
+  backpack() {
+    const s = makeScene(); const g = new THREE.Group();
+    const fab = new THREE.MeshPhysicalMaterial({ color: 0x15171c, roughness: 0.82, sheen: 1, sheenRoughness: 0.5, sheenColor: new THREE.Color(0x3b4250) });
+    const trim = new THREE.MeshPhysicalMaterial({ color: 0x0b0c10, roughness: 0.7 });
+    const metal = new THREE.MeshPhysicalMaterial({ color: 0xc9d2de, metalness: 1, roughness: 0.25 });
+    const W = 1.6, H = 2.25, D = 0.66;
+    const body = new THREE.Mesh(new RoundedBoxGeometry(W, H, D, 8, 0.24), fab); body.position.y = H / 2; g.add(body);
+    const pocket = new THREE.Mesh(new RoundedBoxGeometry(1.2, 0.78, 0.24, 8, 0.11), fab); pocket.position.set(0, 0.5, D / 2 + 0.06); g.add(pocket);
+    const pZip = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.025, 0.02), trim); pZip.position.set(0, 0.82, D / 2 + 0.18); g.add(pZip);
+    const pull = new THREE.Mesh(new RoundedBoxGeometry(0.06, 0.16, 0.025, 2, 0.01), metal); pull.position.set(0.35, 0.74, D / 2 + 0.195); g.add(pull);
+    // asosiy zanjir / главная молния
+    const zc = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(-W / 2 + 0.02, 0.5, D / 2 - 0.12), new THREE.Vector3(-W / 2 + 0.03, H - 0.2, D / 2 - 0.08),
+      new THREE.Vector3(0, H + 0.002, D / 2 - 0.1), new THREE.Vector3(W / 2 - 0.03, H - 0.2, D / 2 - 0.08), new THREE.Vector3(W / 2 - 0.02, 0.5, D / 2 - 0.12)]);
+    const zip = new THREE.Mesh(new THREE.TubeGeometry(zc, 120, 0.018, 8, false), trim); g.add(zip);
+    const pull2 = new THREE.Mesh(new RoundedBoxGeometry(0.06, 0.17, 0.025, 2, 0.01), metal); pull2.position.set(W / 2 - 0.02, H - 0.45, D / 2 - 0.04); pull2.rotation.y = 0.9; g.add(pull2);
+    const handle = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.045, 16, 48, Math.PI), trim); handle.position.set(0, H - 0.02, -0.05); g.add(handle);
+    for (const x of [-0.42, 0.42]) {
+      const strap = new THREE.Mesh(new RoundedBoxGeometry(0.26, 1.8, 0.09, 4, 0.04), trim);
+      strap.position.set(x, H * 0.52, -D / 2 - 0.07); strap.rotation.x = -0.06; g.add(strap);
+    }
+    const L = tex['logo_white.png'];
+    const lw = 1.1, lh = lw * L.image.height / L.image.width;
+    const logo = new THREE.Mesh(new THREE.PlaneGeometry(lw, lh), decalMat(L, { roughness: 0.5 }));
+    logo.position.set(0, 1.56, D / 2 + 0.002); g.add(logo);
+    g.rotation.y = -0.42;
+    shadowAll(g); s.add(g); ground(s, 0, 0.25);
+    return [s, cam([0.9, 2.5, 6.6], [0, 1.08, 0], 30)];
+  },
+
+  headphones() {
+    const s = makeScene(); const g = new THREE.Group();
+    const mat = new THREE.MeshPhysicalMaterial({ color: 0x14161b, roughness: 0.35, clearcoat: 0.6, clearcoatRoughness: 0.2 });
+    const soft = new THREE.MeshPhysicalMaterial({ color: 0x1d2028, roughness: 0.9, sheen: 1, sheenColor: new THREE.Color(0x444b5a) });
+    const blue = new THREE.MeshPhysicalMaterial({ color: BLUE, metalness: 0.5, roughness: 0.25, clearcoat: 1 });
+    const metal = new THREE.MeshPhysicalMaterial({ color: 0xc9d2de, metalness: 1, roughness: 0.2 });
+    const A = 1.0;
+    const band = new THREE.Mesh(new THREE.TorusGeometry(A, 0.07, 20, 96, Math.PI), mat); band.position.y = 0.55; g.add(band);
+    const pad = new THREE.Mesh(new THREE.TorusGeometry(A - 0.08, 0.06, 16, 64, Math.PI * 0.55), soft); pad.position.y = 0.55; pad.rotation.z = Math.PI * 0.225; pad.scale.z = 1.6; g.add(pad);
+    for (const sgn of [-1, 1]) {
+      const slider = new THREE.Mesh(new RoundedBoxGeometry(0.05, 0.45, 0.12, 2, 0.02), metal); slider.position.set(sgn * A, 0.35, 0); g.add(slider);
+      const yoke = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.035, 12, 48, Math.PI), mat); yoke.rotation.y = Math.PI / 2; yoke.position.set(sgn * (A - 0.02), -0.15, 0); g.add(yoke);
+      const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.44, 0.44, 0.28, 64), mat); cup.rotation.z = Math.PI / 2; cup.position.set(sgn * (A - 0.02), -0.45, 0); g.add(cup);
+      const ringB = new THREE.Mesh(new THREE.TorusGeometry(0.44, 0.022, 12, 64), blue); ringB.rotation.y = Math.PI / 2; ringB.position.set(sgn * (A - 0.02 + sgn * 0.14), -0.45, 0); g.add(ringB);
+      const cushion = new THREE.Mesh(new THREE.TorusGeometry(0.33, 0.12, 24, 64), soft); cushion.rotation.y = Math.PI / 2; cushion.position.set(sgn * (A - 0.2), -0.45, 0); g.add(cushion);
+      if (sgn === 1) {
+        const L = tex['mark_white.png'];
+        const w = 0.48, h = w * L.image.height / L.image.width;
+        const logo = new THREE.Mesh(new THREE.PlaneGeometry(w, h), decalMat(L, { roughness: 0.3, clearcoat: 0.6 }));
+        logo.rotation.y = Math.PI / 2; logo.position.set(A - 0.02 + 0.141 + 0.002, -0.45, 0); g.add(logo);
+      }
+    }
+    g.rotation.set(0, -0.9, 0.0);
+    shadowAll(g); s.add(g); ground(s, -0.93, 0.2);
+    return [s, cam([0.2, 1.4, 6.6], [0, -0.12, 0], 30)];
+  },
+
+  tablet() {
+    const s = makeScene(); const g = new THREE.Group();
+    const alu = new THREE.MeshPhysicalMaterial({ color: 0x3a3f48, metalness: 0.85, roughness: 0.32 });
+    const W = 1.75, H = 2.4, D = 0.07;
+    const body = new THREE.Mesh(new RoundedBoxGeometry(W, H, D, 6, 0.03), alu); g.add(body);
+    const bezel = new THREE.Mesh(new RoundedBoxGeometry(W - 0.02, H - 0.02, 0.01, 4, 0.004), new THREE.MeshPhysicalMaterial({ color: 0x050608, roughness: 0.05, clearcoat: 1 }));
+    bezel.position.z = D / 2 - 0.002; g.add(bezel);
+    const scr = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.16, H - 0.16), new THREE.MeshBasicMaterial({ map: screenTex(768, 1052), toneMapped: false }));
+    scr.position.z = D / 2 + 0.0045; g.add(scr);
+    const glass = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.02, H - 0.02), new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.12, roughness: 0.02, metalness: 0, clearcoat: 1, depthWrite: false }));
+    glass.position.z = D / 2 + 0.006; g.add(glass);
+    const camDot = new THREE.Mesh(new THREE.CircleGeometry(0.018, 24), new THREE.MeshBasicMaterial({ color: 0x1a1d24 }));
+    camDot.position.set(0, H / 2 - 0.045, D / 2 + 0.0055); g.add(camDot);
+    g.position.y = H / 2 * Math.cos(0.32) + 0.02;
+    g.rotation.set(-0.32, -0.42, 0, 'YXZ');
+    const stand = new THREE.Mesh(new RoundedBoxGeometry(1.2, 0.04, 0.5, 3, 0.015), alu); stand.position.set(0.05, 0.02, -0.2); stand.rotation.y = -0.42;
+    s.add(stand);
+    shadowAll(g); shadowAll(stand); s.add(g); ground(s, 0, 0.22);
+    return [s, cam([0.3, 2.0, 5.6], [0, 1.08, 0], 32)];
+  },
+
+  laptop() {
+    const s = makeScene(); const g = new THREE.Group();
+    const alu = new THREE.MeshPhysicalMaterial({ color: 0xc9ced6, metalness: 0.9, roughness: 0.3 });
+    const W = 2.7, D = 1.85, T = 0.09;
+    const base = new THREE.Mesh(new RoundedBoxGeometry(W, T, D, 6, 0.04), alu); base.position.y = T / 2; g.add(base);
+    const kb = canvasTex(1024, 420, (c, w, h) => {
+      c.fillStyle = '#1b1e24'; c.fillRect(0, 0, w, h);
+      const rows = 6, cols = 14, pad = 6;
+      const kh = (h - pad * (rows + 1)) / rows, kw = (w - pad * (cols + 1)) / cols;
+      for (let r = 0; r < rows; r++) for (let k = 0; k < cols; k++) {
+        if (r === 5 && k > 3 && k < 9) { if (k === 4) { c.fillStyle = '#2b3038'; c.fillRect(pad + k * (kw + pad), pad + r * (kh + pad), kw * 5 + pad * 4, kh); } continue; }
+        c.fillStyle = '#2b3038'; c.fillRect(pad + k * (kw + pad), pad + r * (kh + pad), kw, kh);
+      }
+    });
+    const keys = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.42, 0.95), new THREE.MeshPhysicalMaterial({ map: kb, roughness: 0.6 }));
+    keys.rotation.x = -Math.PI / 2; keys.position.set(0, T + 0.001, -0.3); g.add(keys);
+    const pad = new THREE.Mesh(new RoundedBoxGeometry(0.95, 0.004, 0.55, 2, 0.002), new THREE.MeshPhysicalMaterial({ color: 0xb4bac3, metalness: 0.8, roughness: 0.25 }));
+    pad.position.set(0, T, 0.55); g.add(pad);
+    const lid = new THREE.Group(); lid.position.set(0, T, -D / 2 + 0.02);
+    const lidBody = new THREE.Mesh(new RoundedBoxGeometry(W, D, 0.05, 6, 0.024), alu); lidBody.position.set(0, D / 2, -0.025); lid.add(lidBody);
+    const bez = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.04, D - 0.04), new THREE.MeshPhysicalMaterial({ color: 0x07080a, roughness: 0.05, clearcoat: 1 }));
+    bez.position.set(0, D / 2, 0.0015); lid.add(bez);
+    const scr = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.2, D - 0.24), new THREE.MeshBasicMaterial({ map: screenTex(1280, 840), toneMapped: false }));
+    scr.position.set(0, D / 2 + 0.01, 0.003); lid.add(scr);
+    lid.rotation.x = -0.32;
+    g.add(lid);
+    g.rotation.y = -0.38;
+    shadowAll(g); s.add(g); ground(s, 0, 0.24);
+    return [s, cam([0.3, 3.0, 7.0], [0.05, 0.7, 0], 30)];
+  },
+};
+
+window.ready = (async () => {
+  for (const n of ['logo_white.png', 'logo_blue.png', 'mark_white.png', 'word_white.png']) { await load(n); await img(n); }
+  return true;
+})();
+
+window.renderItem = async (name) => {
+  await window.ready;
+  const [scene, camera] = builders[name]();
+  renderer.render(scene, camera);
+  return renderer.domElement.toDataURL('image/png');
+};
+</script>
+</body></html>

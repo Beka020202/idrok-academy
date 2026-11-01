@@ -1,0 +1,199 @@
+{
+ "html1": {
+  "course": "html",
+  "xp": 20,
+  "leagues": null
+ },
+ "html2": {
+  "course": "html",
+  "xp": 20,
+  "leagues": null
+ },
+ "html3": {
+  "course": "html",
+  "xp": 20,
+  "leagues": null
+ },
+ "html4": {
+  "course": "html",
+  "xp": 20,
+  "leagues": null
+ },
+ "html5": {
+  "course": "html",
+  "xp": 20,
+  "leagues": null
+ },
+ "html6": {
+  "course": "html",
+  "xp": 20,
+  "leagues": null
+ },
+ "css1": {
+  "course": "css",
+  "xp": 20,
+  "leagues": null
+ },
+ "css2": {
+  "course": "css",
+  "xp": 20,
+  "leagues": null
+ },
+ "css3": {
+  "course": "css",
+  "xp": 20,
+  "leagues": null
+ },
+ "css4": {
+  "course": "css",
+  "xp": 20,
+  "leagues": null
+ },
+ "css5": {
+  "course": "css",
+  "xp": 20,
+  "leagues": null
+ },
+ "css6": {
+  "course": "css",
+  "xp": 20,
+  "leagues": null
+ },
+ "js1": {
+  "course": "js",
+  "xp": 20,
+  "leagues": null
+ },
+ "js2": {
+  "course": "js",
+  "xp": 20,
+  "leagues": null
+ },
+ "js3": {
+  "course": "js",
+  "xp": 20,
+  "leagues": null
+ },
+ "js4": {
+  "course": "js",
+  "xp": 20,
+  "leagues": null
+ },
+ "js5": {
+  "course": "js",
+  "xp": 20,
+  "leagues": null
+ },
+ "js6": {
+  "course": "js",
+  "xp": 20,
+  "leagues": null
+ },
+ "py1": {
+  "course": "py",
+  "xp": 20,
+  "leagues": null
+ },
+ "py2": {
+  "course": "py",
+  "xp": 20,
+  "leagues": null
+ },
+ "py3": {
+  "course": "py",
+  "xp": 20,
+  "leagues": null
+ },
+ "py4": {
+  "course": "py",
+  "xp": 20,
+  "leagues": null
+ },
+ "py5": {
+  "course": "py",
+  "xp": 20,
+  "leagues": null
+ },
+ "py6": {
+  "course": "py",
+  "xp": 20,
+  "leagues": null
+ },
+ "ai1": {
+  "course": "ai",
+  "xp": 20,
+  "leagues": [
+   "beginner"
+  ]
+ },
+ "ai2": {
+  "course": "ai",
+  "xp": 20,
+  "leagues": [
+   "beginner"
+  ]
+ },
+ "ai3": {
+  "course": "ai",
+  "xp": 20,
+  "leagues": [
+   "beginner"
+  ]
+ },
+ "ai4": {
+  "course": "ai",
+  "xp": 20,
+  "leagues": [
+   "beginner"
+  ]
+ },
+ "ai5": {
+  "course": "ai",
+  "xp": 20,
+  "leagues": [
+   "beginner"
+  ]
+ },
+ "aiA1": {
+  "course": "ai",
+  "xp": 30,
+  "leagues": [
+   "advanced"
+  ]
+ },
+ "aiA2": {
+  "course": "ai",
+  "xp": 30,
+  "leagues": [
+   "advanced"
+  ]
+ },
+ "aiA3": {
+  "course": "ai",
+  "xp": 30,
+  "leagues": [
+   "advanced"
+  ]
+ },
+ "aiM1": {
+  "course": "ai",
+  "xp": 30,
+  "leagues": [
+   "master"
+  ]
+ },
+ "aiM2": {
+  "course": "ai",
+  "xp": 30,
+  "leagues": [
+   "master"
+  ]
+ },
+ "aiM3": {
+  "course": "ai",
+  "xp": 30,
+  "leagues": [
+   "master"
+  ]
+ }
+}
