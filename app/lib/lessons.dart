@@ -124,7 +124,7 @@ final Map<String, CodeCheck> kChecks = {
 
 
 final List<Course> kCourses = [
-  Course(id: 'html', tag: '</>', color: '#F86400', name: Tr('HTML', 'HTML'), sub: Tr('Veb-sahifa tuzilishi', 'Структура веб-страницы'), lessons: [
+  Course(id: 'html', tag: '</>', color: '#0A6CFF', name: Tr('HTML', 'HTML'), sub: Tr('Veb-sahifa tuzilishi', 'Структура веб-страницы'), lessons: [
     Lesson(id: 'html1', xp: 15, title: Tr('Birinchi sahifa', 'Первая страница'), steps: [
       LessonStep.read(h: Tr('HTML nima?', 'Что такое HTML?'), p: Tr('HTML — veb-sahifaning skeleti. U teglardan iborat: ochuvchi <p> va yopuvchi </p>. Ular orasidagi matn sahifada ko‘rinadi.', 'HTML — это скелет веб-страницы. Он состоит из тегов: открывающего <p> и закрывающего </p>. Текст между ними видно на странице.'), code: '<h1>Salom, dunyo!</h1>\n<p>Bu mening birinchi sahifam.</p>'),
       LessonStep.quiz(q: Tr('Qaysi teg eng katta sarlavhani yaratadi?', 'Какой тег создаёт самый крупный заголовок?'), o: [Tr.same('<h1>'), Tr.same('<h6>'), Tr.same('<p>'), Tr.same('<head>')], answer: 0, mono: true, e: Tr('<h1> — eng muhim va eng katta sarlavha. <h6> esa eng kichigi.', '<h1> — самый важный и крупный заголовок. <h6> — самый маленький.')),
@@ -143,7 +143,7 @@ final List<Course> kCourses = [
       LessonStep.tryIt(mode: 'html', task: Tr('Sevimli 3 ta faningiz bilan <ul> ro‘yxat tuzing.', 'Составьте список <ul> из 3 любимых предметов.'), start: '<h2>Sevimli fanlarim</h2>\n<ul>\n  \n</ul>', hint: Tr('<li>Matematika</li> — shunday 3 ta qator', '<li>Математика</li> — три такие строки'), check: kChecks['html3']!),
     ]),
   ]),
-  Course(id: 'css', tag: '{ }', color: '#111111', name: Tr('CSS', 'CSS'), sub: Tr('Sahifani bezash', 'Оформление страницы'), lessons: [
+  Course(id: 'css', tag: '{ }', color: '#0A1226', name: Tr('CSS', 'CSS'), sub: Tr('Sahifani bezash', 'Оформление страницы'), lessons: [
     Lesson(id: 'css1', xp: 15, title: Tr('Ranglar', 'Цвета'), steps: [
       LessonStep.read(h: Tr('CSS qoidasi', 'Правило CSS'), p: Tr('CSS sahifaga ko‘rinish beradi. Qoida: selektor, keyin { } ichida «xususiyat: qiymat;». color — matn rangi, background-color — fon rangi.', 'CSS задаёт внешний вид страницы. Правило: селектор, затем в { } «свойство: значение;». color — цвет текста, background-color — цвет фона.'), code: 'h1 {\n  color: blue;\n  background-color: lightyellow;\n}'),
       LessonStep.quiz(q: Tr('Fon rangini qaysi xususiyat o‘zgartiradi?', 'Какое свойство меняет цвет фона?'), o: [Tr.same('background-color'), Tr.same('color'), Tr.same('font-color'), Tr.same('bg')], answer: 0, mono: true, e: Tr('color faqat matnga ta’sir qiladi, fon uchun background-color.', 'color влияет только на текст, для фона — background-color.')),
@@ -163,7 +163,7 @@ final List<Course> kCourses = [
       LessonStep.tryIt(mode: 'css', task: Tr('.karta ga padding va border qo‘shing.', 'Добавьте .karta свойства padding и border.'), start: '.karta {\n  \n}', hint: Tr('padding: 16px; border: 2px solid blue;', 'padding: 16px; border: 2px solid blue;'), check: kChecks['css3']!),
     ]),
   ]),
-  Course(id: 'js', tag: 'JS', color: '#FFC800', name: Tr('JavaScript', 'JavaScript'), sub: Tr('Sahifaga jon berish', 'Оживляем страницу'), lessons: [
+  Course(id: 'js', tag: 'JS', color: '#1FB6F5', name: Tr('JavaScript', 'JavaScript'), sub: Tr('Sahifaga jon berish', 'Оживляем страницу'), lessons: [
     Lesson(id: 'js1', xp: 15, title: Tr('O‘zgaruvchilar', 'Переменные'), steps: [
       LessonStep.read(h: Tr('Ma’lumotni saqlash', 'Храним данные'), p: Tr('O‘zgaruvchi — qiymat saqlanadigan quti. let qiymatni keyin o‘zgartirishga ruxsat beradi, const esa yo‘q. console.log() qiymatni chiqaradi.', 'Переменная — коробка для значения. let позволяет потом менять значение, const — нет. console.log() выводит значение.'), code: 'let ism = "Ali";\nconst yil = 2026;\nconsole.log(ism, yil);'),
       LessonStep.quiz(q: Tr('Qaysi o‘zgaruvchini qayta o‘zgartirib bo‘lmaydi?', 'Какую переменную нельзя переприсвоить?'), o: [Tr.same('const'), Tr.same('let'), Tr.same('var'), Tr.same('change')], answer: 0, mono: true, e: Tr('const — doimiy, uni qayta yozib bo‘lmaydi.', 'const — константа, её нельзя переприсвоить.')),
@@ -182,7 +182,7 @@ final List<Course> kCourses = [
       LessonStep.tryIt(mode: 'js', task: Tr('Sonning kvadratini qaytaradigan kvadrat(n) funksiyasini yozing va kvadrat(4) ni chiqaring.', 'Напишите функцию kvadrat(n), возвращающую квадрат числа, и выведите kvadrat(4).'), start: 'function kvadrat(n) {\n  \n}\n', hint: Tr('return n * n;\nconsole.log(kvadrat(4));', 'return n * n;\nconsole.log(kvadrat(4));'), check: kChecks['js3']!),
     ]),
   ]),
-  Course(id: 'py', tag: 'Py', color: '#FF9500', name: Tr('Python', 'Python'), sub: Tr('Olimpiada tili', 'Язык олимпиад'), lessons: [
+  Course(id: 'py', tag: 'Py', color: '#5B6CFF', name: Tr('Python', 'Python'), sub: Tr('Olimpiada tili', 'Язык олимпиад'), lessons: [
     Lesson(id: 'py1', xp: 15, title: Tr('print()', 'print()'), steps: [
       LessonStep.read(h: Tr('Birinchi dastur', 'Первая программа'), p: Tr('Python — sodda va kuchli til. print() ekranga ma’lumot chiqaradi. Matn qo‘shtirnoq ichida yoziladi.', 'Python — простой и мощный язык. print() выводит данные на экран. Текст пишется в кавычках.'), code: 'print("Salom, dunyo!")\nprint(2 + 3)'),
       LessonStep.quiz(q: Tr('print(2 + 3) nima chiqaradi?', 'Что выведет print(2 + 3)?'), o: [Tr.same('5'), Tr.same('2 + 3'), Tr.same('23'), Tr.same('Xato')], answer: 0, mono: true, e: Tr('Qo‘shtirnoqsiz ifoda hisoblanadi: 2 + 3 = 5.', 'Выражение без кавычек вычисляется: 2 + 3 = 5.')),

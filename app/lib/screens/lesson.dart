@@ -322,7 +322,7 @@ class _LessonScreenState extends State<LessonScreen> {
             smartQuotesType: SmartQuotesType.disabled,
             smartDashesType: SmartDashesType.disabled,
             textCapitalization: TextCapitalization.none,
-            cursorColor: kOrange,
+            cursorColor: kSky,
             style: AppType.monoStrong.copyWith(color: c.codeFg),
             decoration: InputDecoration(
               isDense: true,
@@ -338,7 +338,7 @@ class _LessonScreenState extends State<LessonScreen> {
               disabledBorder: OutlineInputBorder(
                   borderRadius: R.all(R.sm - 2), borderSide: BorderSide(color: c.yellow, width: 1.5)),
               focusedBorder: OutlineInputBorder(
-                  borderRadius: R.all(R.sm - 2), borderSide: const BorderSide(color: kOrange, width: 1.5)),
+                  borderRadius: R.all(R.sm - 2), borderSide: const BorderSide(color: kSky, width: 1.5)),
             ),
           ),
         );

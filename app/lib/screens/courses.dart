@@ -266,7 +266,7 @@ class _Node extends StatelessWidget {
       return face(
         gradient: null,
         color: c.isDark ? c.elevated : c.surface,
-        lip: c.isDark ? const Color(0xFF0E0E10) : const Color(0xFFE3DED6),
+        lip: c.isDark ? const Color(0xFF080B12) : const Color(0xFFD9E2EE),
         child: Text('${index + 1}', style: AppType.title2.copyWith(color: c.text)),
       );
     }

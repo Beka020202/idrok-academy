@@ -133,7 +133,7 @@ def _has(pattern, code, flags=re.I):
 # check(code, output) -> bool
 
 COURSES = [
-    {"id": "html", "tag": "</>", "color": "#F86400", "name": L("HTML", "HTML"),
+    {"id": "html", "tag": "</>", "color": "#0A6CFF", "name": L("HTML", "HTML"),
      "sub": L("Veb-sahifa tuzilishi", "Структура веб-страницы"), "lessons": [
         {"id": "html1", "xp": 15, "title": L("Birinchi sahifa", "Первая страница"), "steps": [
             {"t": "read", "h": L("HTML nima?", "Что такое HTML?"),
@@ -184,7 +184,7 @@ COURSES = [
              "hint": L("<li>Matematika</li> — shunday 3 ta qator", "<li>Математика</li> — три такие строки")},
         ]},
     ]},
-    {"id": "css", "tag": "{ }", "color": "#111111", "name": L("CSS", "CSS"),
+    {"id": "css", "tag": "{ }", "color": "#0A1226", "name": L("CSS", "CSS"),
      "sub": L("Sahifani bezash", "Оформление страницы"), "lessons": [
         {"id": "css1", "xp": 15, "title": L("Ranglar", "Цвета"), "steps": [
             {"t": "read", "h": L("CSS qoidasi", "Правило CSS"),
@@ -236,7 +236,7 @@ COURSES = [
              "hint": L("padding: 16px; border: 2px solid blue;", "padding: 16px; border: 2px solid blue;")},
         ]},
     ]},
-    {"id": "js", "tag": "JS", "color": "#FFC800", "name": L("JavaScript", "JavaScript"),
+    {"id": "js", "tag": "JS", "color": "#1FB6F5", "name": L("JavaScript", "JavaScript"),
      "sub": L("Sahifaga jon berish", "Оживляем страницу"), "lessons": [
         {"id": "js1", "xp": 15, "title": L("O‘zgaruvchilar", "Переменные"), "steps": [
             {"t": "read", "h": L("Ma’lumotni saqlash", "Храним данные"),
@@ -291,7 +291,7 @@ COURSES = [
              "hint": L("return n * n;\nconsole.log(kvadrat(4));", "return n * n;\nconsole.log(kvadrat(4));")},
         ]},
     ]},
-    {"id": "py", "tag": "Py", "color": "#FF9500", "name": L("Python", "Python"),
+    {"id": "py", "tag": "Py", "color": "#5B6CFF", "name": L("Python", "Python"),
      "sub": L("Olimpiada tili", "Язык олимпиад"), "lessons": [
         {"id": "py1", "xp": 15, "title": L("print()", "print()"), "steps": [
             {"t": "read", "h": L("Birinchi dastur", "Первая программа"),

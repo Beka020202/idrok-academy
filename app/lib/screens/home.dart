@@ -84,7 +84,7 @@ class _Hero extends StatelessWidget {
                 height: 220,
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: RadialGradient(colors: [Color(0x47FFE08A), Color(0x00FFE08A)]),
+                  gradient: RadialGradient(colors: [Color(0x47BFF0FF), Color(0x00BFF0FF)]),
                 ),
               ),
             ),

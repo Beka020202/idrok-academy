@@ -189,7 +189,7 @@ class _AppButtonState extends State<AppButton> {
         grad = const LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFF2B2B2E), Color(0xFF0F0F10)],
+          colors: [Color(0xFF1B2740), Color(0xFF0A1226)],
         );
         fg = kWhite;
         border = Border.all(color: const Color(0x1FFFFFFF));
@@ -761,7 +761,7 @@ class Segmented<T> extends StatelessWidget {
       height: 42,
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: c.isDark ? c.surfaceAlt : const Color(0xFFEAE6E0),
+        color: c.isDark ? c.surfaceAlt : const Color(0xFFE3E9F2),
         borderRadius: R.all(R.sm + 1),
       ),
       child: Stack(children: [
@@ -958,11 +958,11 @@ class CodeBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14),
       color: c.codeBar,
       child: Row(children: [
-        _codeDot(kOrange),
+        _codeDot(kBlue),
         const SizedBox(width: 6),
-        _codeDot(kYellow),
+        _codeDot(kSky),
         const SizedBox(width: 6),
-        _codeDot(const Color(0xFF55514B)),
+        _codeDot(const Color(0xFF3A4458)),
         const SizedBox(width: 12),
         Expanded(
           child: Text(label,
@@ -1103,7 +1103,7 @@ class _CodeFieldState extends State<CodeField> {
       smartDashesType: SmartDashesType.disabled,
       inputFormatters: [_TabToSpaces()],
       style: AppType.mono.copyWith(color: c.codeFg),
-      cursorColor: kOrange,
+      cursorColor: kSky,
       decoration: const InputDecoration(
         border: InputBorder.none,
         isCollapsed: true,
@@ -1164,8 +1164,8 @@ class _SkeletonState extends State<Skeleton> with SingleTickerProviderStateMixin
   @override
   Widget build(BuildContext context) {
     final c = colorsOf(context);
-    final base = c.isDark ? const Color(0xFF1E1E21) : const Color(0xFFECE8E2);
-    final hi = c.isDark ? const Color(0xFF2A2A2E) : const Color(0xFFF7F5F1);
+    final base = c.isDark ? const Color(0xFF161B26) : const Color(0xFFE6ECF4);
+    final hi = c.isDark ? const Color(0xFF222A3A) : const Color(0xFFF4F7FB);
     return AnimatedBuilder(
       animation: _a,
       builder: (_, __) {
@@ -1742,7 +1742,7 @@ Widget gridOf(List<Widget> items, int cols, {double gap = S.x3}) {
 /// Kurs rangi (qorong‘i mavzuda qora → oq) / цвет курса (в тёмной теме чёрный → белый).
 Color courseColor(Course co, AppColors c) {
   final col = hexColor(co.color);
-  return c.isDark && col.computeLuminance() < 0.02 ? const Color(0xFFF2F2F2) : col;
+  return c.isDark && col.computeLuminance() < 0.02 ? const Color(0xFFE8F0FF) : col;
 }
 
 /// Kurs belgisi (</>, { }, JS, Py) / значок курса.

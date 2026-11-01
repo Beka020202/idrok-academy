@@ -3,8 +3,9 @@
 //  Ranglar, shriftlar, oraliqlar, burchaklar, soyalar, harakat (animatsiya).
 //  Цвета, типографика, отступы, радиусы, тени, движение.
 //
-//  Brend: faqat to‘q sariq, sariq, qora, oq (+ ular orasidagi neytral kulranglar).
-//  Бренд: только оранжевый, жёлтый, чёрный, белый (+ нейтральные серые между ними).
+//  Brend: logotip ranglari — moviy, ko‘k, to‘q ko‘k va oq (+ sovuq neytral ranglar).
+//  Бренд: цвета логотипа — голубой, синий, тёмно-синий и белый (+ холодные нейтральные).
+//  Eslatma: 'yellow*' maydonlari endi "muvaffaqiyat" (moviy) rangi. / Поля 'yellow*' — теперь цвет «успеха» (голубой).
 // ============================================================================
 
 import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
@@ -21,9 +22,9 @@ const FontWeight w6 = FontWeight.w600;
 const FontWeight w4 = FontWeight.w400;
 
 const Color kWhite = Color(0xFFFFFFFF);
-const Color kBlack = Color(0xFF111111);
-const Color kOrange = Color(0xFFF86400);
-const Color kYellow = Color(0xFFFFC200);
+const Color kBlack = Color(0xFF0A1226); // logotipdagi to‘q ko‘k / тёмно-синий из логотипа
+const Color kBlue = Color(0xFF0A6CFF);
+const Color kSky = Color(0xFF38C8FF);
 
 // ---------------------------------------------------------------- ranglar / цвета
 /// Har bir mavzu alohida loyihalangan (shunchaki teskari emas).
@@ -94,8 +95,8 @@ class AppColors {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: isDark
-            ? const [Color(0xFFFF8A24), Color(0xFFE85300)]
-            : const [Color(0xFFFF8A1F), Color(0xFFF25A00)],
+            ? const [Color(0xFF2FA8FF), Color(0xFF0047D6)]
+            : const [Color(0xFF2EA6FF), Color(0xFF0058F0)],
       );
 }
 
@@ -103,68 +104,68 @@ class AppColors {
 /// Светлая тема: тёплый белый, мягкие тени, тонкие границы.
 const AppColors kLight = AppColors(
   isDark: false,
-  bg: Color(0xFFF6F4F1),
-  glowA: Color(0x1AF86400),
-  glowB: Color(0x22FFC200),
+  bg: Color(0xFFF2F5FA),
+  glowA: Color(0x1F0A6CFF),
+  glowB: Color(0x2438C8FF),
   surface: Color(0xFFFFFFFF),
-  surfaceAlt: Color(0xFFF0EDE8),
+  surfaceAlt: Color(0xFFEAEFF6),
   elevated: Color(0xFFFFFFFF),
   glass: Color(0xC7FFFFFF),
   glassEdge: Color(0xE6FFFFFF),
-  hairline: Color(0x14000000),
-  hairlineStrong: Color(0x24000000),
-  text: Color(0xFF111111),
-  text2: Color(0xFF6B6863),
-  text3: Color(0xFFA29E98),
-  accent: Color(0xFFF86400),
-  accentHi: Color(0xFFFF9035),
-  accentText: Color(0xFFD35400),
-  accentSoft: Color(0xFFFFEEDF),
-  yellow: Color(0xFFFFBE00),
-  yellowHi: Color(0xFFFFD84D),
-  yellowText: Color(0xFF7A5700),
-  yellowSoft: Color(0xFFFFF4CC),
-  danger: Color(0xFFC24A00),
-  dangerSoft: Color(0xFFFFE4D2),
-  codeBg: Color(0xFF151413),
-  codeBar: Color(0xFF1F1D1B),
-  codeFg: Color(0xFFF4EFE8),
-  codeMuted: Color(0xFF8C857C),
-  shadow: Color(0x1A1A120A),
-  scrim: Color(0x66000000),
+  hairline: Color(0x140A1226),
+  hairlineStrong: Color(0x240A1226),
+  text: Color(0xFF0A1226),
+  text2: Color(0xFF586178),
+  text3: Color(0xFF9AA3B5),
+  accent: Color(0xFF0A6CFF),
+  accentHi: Color(0xFF3FA9FF),
+  accentText: Color(0xFF0058E6),
+  accentSoft: Color(0xFFE8F1FF),
+  yellow: Color(0xFF0795D9),
+  yellowHi: Color(0xFF4FCBFF),
+  yellowText: Color(0xFF03628F),
+  yellowSoft: Color(0xFFE1F5FF),
+  danger: Color(0xFFD93A44),
+  dangerSoft: Color(0xFFFFE9EA),
+  codeBg: Color(0xFF0B1220),
+  codeBar: Color(0xFF131C2E),
+  codeFg: Color(0xFFE8F0FF),
+  codeMuted: Color(0xFF7D8AA3),
+  shadow: Color(0x1A0A1226),
+  scrim: Color(0x660A1226),
 );
 
 /// Qorong‘i mavzu: chuqur qora, qatlamli sirtlar, yumshoq yorug‘lik.
 /// Тёмная тема: глубокий чёрный, слоистые поверхности, мягкое свечение.
 const AppColors kDark = AppColors(
   isDark: true,
-  bg: Color(0xFF09090A),
-  glowA: Color(0x1FF86400),
-  glowB: Color(0x10FFC200),
-  surface: Color(0xFF151517),
-  surfaceAlt: Color(0xFF1E1E21),
-  elevated: Color(0xFF242428),
-  glass: Color(0xA6161618),
+  bg: Color(0xFF05070D),
+  glowA: Color(0x2E0A6CFF),
+  glowB: Color(0x1638C8FF),
+  surface: Color(0xFF0F131C),
+  surfaceAlt: Color(0xFF161B26),
+  elevated: Color(0xFF1C2230),
+  glass: Color(0xA60F131C),
   glassEdge: Color(0x24FFFFFF),
   hairline: Color(0x14FFFFFF),
   hairlineStrong: Color(0x26FFFFFF),
-  text: Color(0xFFF5F5F7),
-  text2: Color(0xFFA3A3A8),
-  text3: Color(0xFF6C6C72),
-  accent: Color(0xFFFF7414),
-  accentHi: Color(0xFFFF9A47),
-  accentText: Color(0xFFFF9447),
-  accentSoft: Color(0x29FF7414),
-  yellow: Color(0xFFFFC21A),
-  yellowHi: Color(0xFFFFDA66),
-  yellowText: Color(0xFFFFD25C),
-  yellowSoft: Color(0x24FFC21A),
-  danger: Color(0xFFFF8A45),
-  dangerSoft: Color(0x24FF6A00),
-  codeBg: Color(0xFF0D0D0E),
-  codeBar: Color(0xFF17171A),
-  codeFg: Color(0xFFF4EFE8),
-  codeMuted: Color(0xFF77726B),
+  text: Color(0xFFF2F5FA),
+  text2: Color(0xFF9AA4B8),
+  text3: Color(0xFF5E6779),
+  accent: Color(0xFF2F80FF),
+  accentHi: Color(0xFF5CC2FF),
+  accentText: Color(0xFF7DB5FF),
+  accentSoft: Color(0x2E2F80FF),
+  yellow: Color(0xFF0E93D6),
+  yellowHi: Color(0xFF5CD6FF),
+  yellowText: Color(0xFF7FD8FF),
+  yellowSoft: Color(0x2638C8FF),
+  danger: Color(0xFFFF7A80),
+  dangerSoft: Color(0x29FF4D57),
+  codeBg: Color(0xFF070A12),
+  codeBar: Color(0xFF0E131D),
+  codeFg: Color(0xFFE8F0FF),
+  codeMuted: Color(0xFF6B7891),
   shadow: Color(0x80000000),
   scrim: Color(0x99000000),
 );
@@ -213,14 +214,14 @@ class Shadows {
   static List<BoxShadow> card(AppColors c) => c.isDark
       ? const [BoxShadow(color: Color(0x66000000), blurRadius: 30, offset: Offset(0, 14), spreadRadius: -10)]
       : const [
-          BoxShadow(color: Color(0x121A120A), blurRadius: 30, offset: Offset(0, 12), spreadRadius: -8),
+          BoxShadow(color: Color(0x140A1226), blurRadius: 30, offset: Offset(0, 12), spreadRadius: -8),
           BoxShadow(color: Color(0x0A000000), blurRadius: 2, offset: Offset(0, 1)),
         ];
 
   /// Yengil ko‘tarilish / лёгкий подъём (кнопки-иконки, таблетки).
   static List<BoxShadow> soft(AppColors c) => c.isDark
       ? const [BoxShadow(color: Color(0x4D000000), blurRadius: 16, offset: Offset(0, 6), spreadRadius: -6)]
-      : const [BoxShadow(color: Color(0x141A120A), blurRadius: 16, offset: Offset(0, 6), spreadRadius: -6)];
+      : const [BoxShadow(color: Color(0x160A1226), blurRadius: 16, offset: Offset(0, 6), spreadRadius: -6)];
 
   /// Nur sochuvchi tugma / «светящаяся» кнопка. strength: 0..1
   static List<BoxShadow> glow(Color color, AppColors c, {double strength = 1}) {
