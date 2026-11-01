@@ -19,7 +19,7 @@ Future<void> tapKey(WidgetTester t, Key key) async {
   await t.ensureVisible(f.last);
   await t.pump(const Duration(milliseconds: 100));
   await t.pump(const Duration(milliseconds: 1200));
-  await t.tap(f.last, warnIfMissed: false);
+  await t.tap(f.last);
   await settle(t);
 }
 
@@ -138,7 +138,7 @@ void main() {
     expect(find.text('XP do‘koni'), findsWidgets);
     await tapKey(tester, const ValueKey('shop-pen'));
     expect(find.byKey(const ValueKey('buy-confirm')), findsOneWidget);
-    await tapKey(tester, const ValueKey('buy-confirm')); // oflayn — o‘chirilgan / офлайн — неактивна
+    expect(state.online, isFalse); // oflayn — tugma o‘chirilgan / офлайн — кнопка неактивна
     await tester.tapAt(const Offset(20, 20));
     await settle(tester);
 
@@ -195,8 +195,13 @@ void main() {
     expect(has(const ValueKey('lesson-close')), isFalse);
 
     // 8) Profilni tahrirlash / редактирование профиля
+    await tester.pump(const Duration(seconds: 3));
     await tapTab(tester, 'profile');
+    await settle(tester, 1500);
+    expect(find.byKey(const ValueKey('edit-profile')), findsOneWidget);
     await tapKey(tester, const ValueKey('edit-profile'));
+    await settle(tester, 1000);
+    expect(find.byKey(const ValueKey('profile-save')), findsOneWidget, reason: 'edit sheet should be open');
     await fillField(tester, 'f-city', 'Samarqand');
     await tapKey(tester, const ValueKey('profile-save'));
     expect(state.localCity, 'Samarqand');
