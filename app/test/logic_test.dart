@@ -103,6 +103,16 @@ void main() {
       expect([for (final x in steps) x.difficulty], [1, 1, 1, 2, 2, 2, 3, 3]);
     });
 
+    test('warm-up questions are valid for many seeds', () {
+      for (var seed = 0; seed < 200; seed++) {
+        for (final st in placementTest(seed)) {
+          final texts = [for (final o in st.options) o.uz];
+          expect(texts.length, greaterThanOrEqualTo(3), reason: 'seed $seed: ${st.q?.uz} $texts');
+          expect(texts.toSet().length, texts.length, reason: 'seed $seed: $texts');
+        }
+      }
+    });
+
     test('leagues from points', () {
       expect(leagueFor(3, 0.5), 'beginner');
       expect(leagueFor(8, 0.9), 'advanced');
