@@ -21,8 +21,9 @@ class _AuthScreenState extends State<AuthScreen> {
   final _user = TextEditingController();
   final _pass = TextEditingController();
   final _name = TextEditingController();
-  final _school = TextEditingController();
-  final _city = TextEditingController();
+  final _code = TextEditingController();
+  final SchoolValue _school = SchoolValue();
+  bool _asTeacher = false;
   Uint8List? _photo;
   late final TextEditingController _server;
   bool _register = false;
@@ -46,8 +47,7 @@ class _AuthScreenState extends State<AuthScreen> {
     _user.dispose();
     _pass.dispose();
     _name.dispose();
-    _school.dispose();
-    _city.dispose();
+    _code.dispose();
     _server.dispose();
     super.dispose();
   }
@@ -60,8 +60,10 @@ class _AuthScreenState extends State<AuthScreen> {
       username: _user.text,
       password: _pass.text,
       name: _name.text,
-      school: _school.text,
-      city: _city.text,
+      school: _asTeacher ? '' : _school.label,
+      city: _asTeacher ? '' : _school.district,
+      region: _asTeacher ? '' : _school.region,
+      code: _asTeacher ? _code.text : '',
       photo: _photo,
       serverUrl: _server.text,
     );
@@ -121,19 +123,55 @@ class _AuthScreenState extends State<AuthScreen> {
               ? Padding(
                   padding: const EdgeInsets.only(top: S.x5),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                    Center(
-                      child: PhotoPicker(
-                        bytes: _photo,
-                        name: _name.text,
-                        size: 96,
-                        onPicked: (b) => setState(() => _photo = b),
-                      ),
+                    Segmented<bool>(
+                      key: const ValueKey('role-pick'),
+                      values: const [false, true],
+                      labels: [s.t('role_student'), s.t('role_teacher')],
+                      icons: const [Icons.school_rounded, Icons.co_present_rounded],
+                      value: _asTeacher,
+                      onChanged: (v) => setState(() {
+                        _asTeacher = v;
+                        _error = '';
+                      }),
                     ),
-                    const SizedBox(height: S.x2),
-                    Text(s.t('photo_need'),
-                        textAlign: TextAlign.center, style: AppType.footnote.copyWith(color: c.text2)),
-                    const SizedBox(height: S.x4),
-                    ProfileFields(name: _name, school: _school, city: _city, onDone: _submit),
+                    const SizedBox(height: S.x5),
+                    if (_asTeacher) ...[
+                      Container(
+                        padding: const EdgeInsets.all(S.x3 + 2),
+                        decoration: BoxDecoration(color: c.accentSoft, borderRadius: R.all(R.md - 2)),
+                        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Icon(Icons.verified_user_rounded, size: 20, color: c.accentText),
+                          const SizedBox(width: S.x2),
+                          Expanded(child: Text(s.t('teacher_code_info'), style: AppType.footnote.copyWith(color: c.text))),
+                        ]),
+                      ),
+                      const SizedBox(height: S.x4),
+                      AppTextField(
+                        key: const ValueKey('f-code'),
+                        controller: _code,
+                        label: s.t('teacher_code'),
+                        hint: 'IDR-XXXX-XXXX',
+                        icon: Icons.key_rounded,
+                        maxLength: 13,
+                        textCapitalization: TextCapitalization.characters,
+                      ),
+                      const SizedBox(height: S.x4),
+                      ProfileFields(name: _name, school: _school, onSchool: () {}, showSchool: false),
+                    ] else ...[
+                      Center(
+                        child: PhotoPicker(
+                          bytes: _photo,
+                          name: _name.text,
+                          size: 96,
+                          onPicked: (b) => setState(() => _photo = b),
+                        ),
+                      ),
+                      const SizedBox(height: S.x2),
+                      Text(s.t('photo_need'),
+                          textAlign: TextAlign.center, style: AppType.footnote.copyWith(color: c.text2)),
+                      const SizedBox(height: S.x4),
+                      ProfileFields(name: _name, school: _school, onSchool: () => setState(() {})),
+                    ],
                   ]),
                 )
               : const SizedBox(width: double.infinity),

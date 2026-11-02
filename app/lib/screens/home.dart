@@ -41,10 +41,10 @@ class HomeTab extends StatelessWidget {
       title: '${s.t('hello')}${name.isNotEmpty ? ', $name' : ''}',
       children: [
         _Hero(next: next, course: nlCourse),
-        if (!s.isTeacher) const _LeagueCard(),
+        const _LeagueCard(),
         _Mascot(tip: tip),
         _Quests(st: st),
-        if (!s.isTeacher && s.shopItems.isNotEmpty) const _ShopTeaser(),
+        if (s.shopItems.isNotEmpty) const _ShopTeaser(),
         _Week(st: st),
         SectionHeader(s.t('courses')),
         gridOf([for (final co in kCourses) _CourseCard(co)], 2),

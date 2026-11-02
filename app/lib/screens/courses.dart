@@ -6,6 +6,7 @@ import '../state.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'lesson.dart';
+import 'teacher_tests.dart' show SchoolTestsSection;
 
 /// 2. Kurs xaritasi / карта курса.
 class CoursesTab extends StatelessWidget {
@@ -23,6 +24,7 @@ class CoursesTab extends StatelessWidget {
         SectionHeader(s.t('course_path')),
         _Path(course: course),
         _Chest(course: course),
+        const SchoolTestsSection(),
       ],
     );
   }

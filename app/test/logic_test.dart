@@ -213,6 +213,55 @@ void main() {
     });
   });
 
+  group('schools', () {
+    test('every region has districts and unique names', () {
+      expect(kRegions.length, 14);
+      for (final r in kRegions) {
+        expect(r.districts, isNotEmpty, reason: r.id);
+        expect(r.districts.toSet().length, r.districts.length, reason: r.id);
+      }
+      expect(regionById('Andijon viloyati')!.districts, contains('Asaka'));
+    });
+
+    test('school names are always written the same way', () {
+      expect(schoolLabel(SchoolKind.school, number: '045'), '45-maktab');
+      expect(schoolLabel(SchoolKind.school, number: ' 12 '), '12-maktab');
+      expect(schoolLabel(SchoolKind.idum, number: '3'), '3-IDUM');
+      expect(schoolLabel(SchoolKind.president), 'Prezident maktabi');
+      expect(schoolLabel(SchoolKind.school), '');
+      for (final label in ['45-maktab', '3-IDUM', 'Prezident maktabi', 'Asaka litseyi', '“Kelajak” xususiy maktabi']) {
+        final (k, n, t) = parseSchool(label);
+        expect(schoolLabel(k, number: n, name: t), label);
+      }
+    });
+  });
+
+  group('offline', () {
+    test('python practice turns into a normal question without the server', () {
+      var n = 0;
+      for (final e in kAllLessons.entries) {
+        for (final d in [1, 2, 3]) {
+          final steps = e.value.$1.build(3, d);
+          for (var k = 0; k < steps.length; k++) {
+            final st = steps[k];
+            if (st.type != StepType.tryIt || st.mode != 'py') continue;
+            final f = offlineFallback(st, k);
+            n++;
+            expect(f.type == StepType.order || f.type == StepType.quiz, isTrue, reason: e.key);
+            if (f.type == StepType.order) expect(f.lines.length, greaterThanOrEqualTo(3));
+            if (f.type == StepType.quiz) {
+              expect(f.options.length, greaterThanOrEqualTo(2), reason: e.key);
+              expect(f.options[f.answer].uz, st.solution!.trimRight(), reason: e.key);
+              final t = [for (final o in f.options) o.uz];
+              expect(t.toSet().length, t.length, reason: '${e.key} $t');
+            }
+          }
+        }
+      }
+      expect(n, greaterThan(0));
+    });
+  });
+
   group('timers and helper', () {
     test('harder questions get more time, beginners get extra', () {
       const q1 = LessonStep.quiz(q: Tr.same('a'), o: [Tr.same('1'), Tr.same('2')], answer: 0, difficulty: 1);

@@ -6,6 +6,7 @@ import '../state.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'profile_form.dart';
+import 'reminder.dart' show ReminderTile;
 
 /// Profil / Профиль.
 class ProfileTab extends StatefulWidget {
@@ -92,7 +93,7 @@ class _ProfileTabState extends State<ProfileTab> {
     );
 
     // ---- Liga / лига
-    final league = s.isTeacher
+    final league = s.isStaff
         ? null
         : AppCard(
             padding: const EdgeInsets.all(S.x4),
@@ -156,7 +157,7 @@ class _ProfileTabState extends State<ProfileTab> {
     );
 
     // ---- Do‘kon / магазин
-    final shop = s.isTeacher
+    final shop = s.isStaff
         ? null
         : AppCard(
             key: const ValueKey('profile-shop'),
@@ -225,11 +226,14 @@ class _ProfileTabState extends State<ProfileTab> {
       children: [
         head,
         if (league != null) league,
-        SectionHeader(s.t('stats')),
-        stats,
-        if (shop != null) shop,
-        SectionHeader(s.t('badges')),
-        badgeGrid,
+        if (!s.isStaff) ...[
+          SectionHeader(s.t('stats')),
+          stats,
+          if (shop != null) shop,
+          SectionHeader(s.t('badges')),
+          badgeGrid,
+        ],
+        if (!s.isStaff) const ReminderTile(),
         SectionHeader(s.t('settings')),
         settings,
         bottom,
@@ -247,7 +251,8 @@ class _EditSheet extends StatefulWidget {
 }
 
 class _EditSheetState extends State<_EditSheet> {
-  late final TextEditingController _name, _school, _city;
+  late final TextEditingController _name;
+  late final SchoolValue _school;
   bool _busy = false;
   String _error = '';
 
@@ -256,26 +261,31 @@ class _EditSheetState extends State<_EditSheet> {
     super.initState();
     final s = AppScope.read(context);
     _name = TextEditingController(text: s.displayName);
-    _school = TextEditingController(text: s.school);
-    _city = TextEditingController(text: s.city);
+    _school = SchoolValue.of(s.region, s.district, s.school);
   }
 
   @override
   void dispose() {
     _name.dispose();
-    _school.dispose();
-    _city.dispose();
     super.dispose();
   }
 
   Future<void> _save() async {
     final s = AppScope.read(context);
-    if (_name.text.trim().isEmpty || _school.text.trim().isEmpty || _city.text.trim().isEmpty) {
+    if (_name.text.trim().isEmpty) {
       setState(() => _error = s.t('err_profile'));
       return;
     }
+    if (s.isStudent && !_school.complete) {
+      setState(() => _error = s.t('err_school'));
+      return;
+    }
     setState(() => _busy = true);
-    await s.updateProfile(name: _name.text, school: _school.text, city: _city.text);
+    if (s.isStudent) {
+      await s.updateProfile(name: _name.text, school: _school.label, city: _school.district, region: _school.region);
+    } else {
+      await s.updateProfile(name: _name.text);
+    }
     if (!mounted) return;
     setState(() => _busy = false);
     Navigator.of(context).pop();
@@ -288,7 +298,12 @@ class _EditSheetState extends State<_EditSheet> {
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Text(s.t('edit_profile'), textAlign: TextAlign.center, style: AppType.title3.copyWith(color: c.text)),
       const SizedBox(height: S.x4),
-      ProfileFields(name: _name, school: _school, city: _city, onDone: _save),
+      Flexible(
+        child: SingleChildScrollView(
+          child: ProfileFields(
+              name: _name, school: _school, onSchool: () => setState(() {}), showSchool: s.isStudent),
+        ),
+      ),
       if (_error.isNotEmpty) ...[const SizedBox(height: S.x3), ErrorBox(_error)],
       const SizedBox(height: S.x4),
       AppButton(s.t('save'),

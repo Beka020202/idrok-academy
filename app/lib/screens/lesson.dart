@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:flutter/services.dart';
 
+import '../api.dart' show pingRunner;
 import '../focus.dart';
 import '../lessons.dart';
 import '../progress.dart';
@@ -88,6 +89,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
   Course? course;
   List<LessonStep> steps = const [];
   int seed = 0;
+  bool? runnerOk; // Python serveri / сервер Python: null — noma’lum / неизвестно
 
   _Phase phase = _Phase.gate;
   bool cancelledBefore = false; // isinish qayta boshlandi / разминку начали заново
@@ -150,8 +152,38 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
   void _prepare() {
     final st = AppScope.read(context);
     seed = st.testMode ? 7 : math.Random().nextInt(1 << 30);
-    steps = widget.placement ? placementTest(seed) : lesson!.build(seed, st.st.difficultyFor(lesson!.id));
-    if (!widget.placement && steps.any((x) => x.type == StepType.tryIt && x.mode == 'py')) st.warmUp();
+    steps = widget.placement ? placementTest(seed) : [...lesson!.build(seed, st.st.difficultyFor(lesson!.id))];
+    if (!widget.placement && steps.any(_needsRunner)) {
+      if (st.testMode) {
+        runnerOk = true;
+      } else {
+        pingRunner(st.server).then((ok) {
+          if (!mounted) return;
+          runnerOk = ok;
+          if (!ok) _swapCurrent();
+        });
+      }
+    }
+  }
+
+  static bool _needsRunner(LessonStep x) => x.type == StepType.tryIt && x.mode == 'py';
+
+  /// Server bo‘lmasa — kod savolini oddiy savolga almashtirish.
+  /// Нет сервера — заменить вопрос с кодом обычным вопросом.
+  void _swapCurrent({bool notify = true}) {
+    if (phase != _Phase.test || i >= steps.length || !_needsRunner(step) || status == 'ok' || timedOut) return;
+    setState(() {
+      steps[i] = offlineFallback(step, seed + i);
+      sel = null;
+      status = null;
+      code = null;
+      out = null;
+      running = false;
+      wrongOnce = false;
+      picked = [];
+      _enterStep();
+    });
+    if (notify) s.toast(s.t('offline_swap'), icon: Icons.wifi_off_rounded);
   }
 
   Future<void> _checkDnd() async {
@@ -276,6 +308,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
   bool get _timerRunning => phase == _Phase.test && i < steps.length && step.timed && status != 'ok' && !timedOut && !(widget.placement && status != null);
 
   void _enterStep() {
+    if (runnerOk == false && i < steps.length && _needsRunner(steps[i])) steps[i] = offlineFallback(steps[i], seed + i);
     _stepStart = _elapsed;
     if (i < steps.length && step.timed) {
       _left.value = 1;
@@ -381,8 +414,10 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
           running = false;
           out = formatRun(s, r);
           if (r.err == 'conn' || r.err == 'busy') {
-            // Internet muammosi — xato hisoblanmaydi / проблема сети — не считается ошибкой.
-            setState(() {});
+            // Server yo‘q — savol almashadi, xato hisoblanmaydi.
+            // Сервера нет — вопрос заменяется, ошибкой не считается.
+            runnerOk = false;
+            _swapCurrent();
             return;
           }
           output = r.err == null ? r.out : '';
@@ -485,6 +520,10 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
       running = false;
       out = formatRun(s, r);
     });
+    if (r.err == 'conn' || r.err == 'busy') {
+      runnerOk = false;
+      _swapCurrent();
+    }
   }
 
   Future<void> _helper() async {

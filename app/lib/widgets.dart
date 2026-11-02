@@ -889,6 +889,8 @@ class AppTextField extends StatefulWidget {
   final bool autocorrect;
   final TextCapitalization textCapitalization;
   final FocusNode? focusNode;
+  final String? suffixText;
+  final List<TextInputFormatter>? inputFormatters;
 
   const AppTextField({
     super.key,
@@ -907,6 +909,8 @@ class AppTextField extends StatefulWidget {
     this.maxLines = 1,
     this.autocorrect = false,
     this.textCapitalization = TextCapitalization.none,
+    this.suffixText,
+    this.inputFormatters,
     this.focusNode,
   });
 
@@ -969,6 +973,7 @@ class _AppTextFieldState extends State<AppTextField> {
           autocorrect: widget.autocorrect,
           enableSuggestions: widget.autocorrect,
           textCapitalization: widget.textCapitalization,
+          inputFormatters: widget.inputFormatters,
           style: AppType.bodyStrong.copyWith(color: c.text),
           cursorColor: c.accent,
           decoration: InputDecoration(
@@ -981,6 +986,8 @@ class _AppTextFieldState extends State<AppTextField> {
                 ? null
                 : Icon(widget.icon, size: 20, color: _focused ? c.accent : c.text3),
             suffixIcon: widget.suffix,
+            suffixText: widget.suffixText,
+            suffixStyle: AppType.bodyStrong.copyWith(color: c.accentText),
           ),
         ),
       ),
@@ -1642,19 +1649,24 @@ class Header extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
           Text(kAppName, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.brand.copyWith(color: c.text)),
           const SizedBox(height: 3),
-          Text(s.isTeacher ? s.t('teacher') : s.leagueName,
+          Text(s.isAdmin ? s.t('role_admin') : s.isTeacher ? '${s.t('role_teacher')} · ${s.school}' : s.leagueName,
               maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.caption.copyWith(color: c.text2)),
         ]),
       ),
-      AppPill('${s.st.streak}', icon: Icons.local_fire_department_rounded, iconColor: c.accent),
-      const SizedBox(width: S.x2),
-      Pressable(
-        key: const ValueKey('xp-pill'),
-        onTap: s.isTeacher ? null : () => s.go('shop'),
-        scale: 0.94,
-        semanticLabel: s.t('shop'),
-        child: AppPill('${s.st.xp} XP', icon: Icons.bolt_rounded, iconColor: c.yellow),
-      ),
+      if (s.isStaff)
+        AppPill(s.isAdmin ? s.t('role_admin') : s.t('role_teacher'),
+            icon: s.isAdmin ? Icons.admin_panel_settings_rounded : Icons.co_present_rounded, tone: Tone.accent)
+      else ...[
+        AppPill('${s.st.streak}', icon: Icons.local_fire_department_rounded, iconColor: c.accent),
+        const SizedBox(width: S.x2),
+        Pressable(
+          key: const ValueKey('xp-pill'),
+          onTap: () => s.go('shop'),
+          scale: 0.94,
+          semanticLabel: s.t('shop'),
+          child: AppPill('${s.st.xp} XP', icon: Icons.bolt_rounded, iconColor: c.yellow),
+        ),
+      ],
     ]);
   }
 }

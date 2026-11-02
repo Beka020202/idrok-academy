@@ -245,3 +245,48 @@ List<String> words(String v) {
 
 /// Natija qatorlari (bo‘sh joylarsiz) / строки вывода (без пробелов по краям).
 List<String> outLines(String v) => [for (final l in v.trim().split('\n')) if (l.trim().isNotEmpty) l.trim()];
+
+// ---------------------------------------------------------------- serversiz almashtirish / замена без сервера
+/// Python amaliyoti serverga muhtoj. Server javob bermasa, uni oddiy savolga almashtiramiz:
+/// yechim qatorlarini tartiblash yoki to‘g‘ri kodni tanlash. Test hech qachon to‘xtab qolmaydi.
+/// Практика Python требует сервера. Если он недоступен, заменяем её обычным вопросом:
+/// расставить строки решения или выбрать правильный код. Тест никогда не застревает.
+LessonStep offlineFallback(LessonStep st, int seed) {
+  if (st.type != StepType.tryIt) return st;
+  final sol = (st.solution ?? '').trimRight();
+  final task = st.task ?? const Tr('', '');
+  final lines = [for (final l in sol.split('\n')) if (l.trim().isNotEmpty) l];
+  if (lines.length >= 3 && lines.length <= 9) {
+    return LessonStep.order(
+      q: Tr('${task.uz}\nKod qatorlarini to‘g‘ri tartibda joylang.', '${task.ru}\nРасставьте строки кода в правильном порядке.'),
+      lines: lines,
+      e: st.hint,
+      difficulty: st.difficulty,
+    );
+  }
+  final r = Random(seed);
+  final wrong = <String>[];
+  void add(String v) {
+    if (v.trim().isNotEmpty && v.trim() != sol.trim() && !wrong.contains(v)) wrong.add(v);
+  }
+
+  add(st.start ?? '');
+  final digit = RegExp(r'\d').firstMatch(sol);
+  if (digit != null) {
+    add(sol.replaceRange(digit.start, digit.end, '${(int.parse(digit.group(0)!) + 1) % 10}'));
+  }
+  if (sol.contains('"')) add(sol.replaceFirst('"', ''));
+  if (sol.contains('(')) add(sol.replaceFirst('(', ' '));
+  if (sol.contains(':')) add(sol.replaceFirst(':', ''));
+  add(sol.replaceFirst('print', 'Print'));
+  add('$sol;;');
+  final opts = [sol, ...wrong.take(3)]..shuffle(r);
+  return LessonStep.quiz(
+    q: Tr('${task.uz}\nQaysi kod buni to‘g‘ri bajaradi?', '${task.ru}\nКакой код делает это правильно?'),
+    o: [for (final o in opts) Tr.same(o)],
+    answer: opts.indexOf(sol),
+    mono: true,
+    e: st.hint,
+    difficulty: st.difficulty,
+  );
+}

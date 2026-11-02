@@ -3,3 +3,4 @@
 export 'content/catalog.dart';
 export 'content/model.dart' hide has, count, words, outLines;
 export 'content/placement.dart';
+export 'content/regions.dart';

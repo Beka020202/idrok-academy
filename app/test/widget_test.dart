@@ -113,10 +113,18 @@ void main() {
         find.text('Ism, maktab va yashash joyini to‘ldiring.').evaluate().isEmpty, isFalse);
     await tapKey(tester, const ValueKey('photo-pick'));
     await fillField(tester, 'f-name', 'Aziza Karimova');
-    await fillField(tester, 'f-school', '45-maktab');
-    await fillField(tester, 'f-city', 'Toshkent');
+    await tapKey(tester, const ValueKey('school-region'));
+    await tapKey(tester, const ValueKey('pick-Andijon viloyati'));
+    await tapKey(tester, const ValueKey('school-district'));
+    await tapKey(tester, const ValueKey('pick-Asaka'));
+    await fillField(tester, 'school-number', '45');
+    expect(find.text('-maktab'), findsWidgets);
+    FocusManager.instance.primaryFocus?.unfocus();
     await tapKey(tester, const ValueKey('setup-save'));
     expect(state.localName, 'Aziza Karimova');
+    expect(state.localSchool, '45-maktab');
+    expect(state.localRegion, 'Andijon viloyati');
+    expect(state.localCity, 'Asaka');
     expect(state.myPhoto, isNotNull);
 
     // 3) Isinish (liga aniqlanadi) / разминка (определяет лигу)
@@ -127,6 +135,14 @@ void main() {
     await tapKey(tester, const ValueKey('placement-finish'));
     await settle(tester, 900);
     expect(state.st.league, isNotEmpty);
+
+    // Eslatma vaqti / время напоминания
+    expect(find.text('Qachon eslatay?'), findsOneWidget);
+    await tapKey(tester, const ValueKey('preset-450'));
+    expect(find.text('Har kuni soat 07:30 da eslataman'), findsOneWidget);
+    await tapKey(tester, const ValueKey('reminder-save'));
+    await settle(tester, 900);
+    expect(state.reminderMinutes, 450);
     expect(state.st.xp, 20);
     expect(find.byKey(const ValueKey('nav-home')), findsOneWidget);
 
@@ -202,9 +218,18 @@ void main() {
     await tapKey(tester, const ValueKey('edit-profile'));
     await settle(tester, 1000);
     expect(find.byKey(const ValueKey('profile-save')), findsOneWidget, reason: 'edit sheet should be open');
-    await fillField(tester, 'f-city', 'Samarqand');
+    await fillField(tester, 'school-number', '46');
+    FocusManager.instance.primaryFocus?.unfocus();
     await tapKey(tester, const ValueKey('profile-save'));
-    expect(state.localCity, 'Samarqand');
+    expect(state.localSchool, '46-maktab');
+
+    // Eslatmani profildan o‘zgartirish / изменить напоминание из профиля
+    await tester.pump(const Duration(seconds: 3));
+    await tapKey(tester, const ValueKey('reminder-tile'));
+    await settle(tester, 900);
+    await tapKey(tester, const ValueKey('reminder-skip'));
+    await settle(tester, 900);
+    expect(state.reminderMinutes, -1);
 
     // Bildirishnoma yopilishini kutamiz / ждём, пока скроется уведомление
     await tester.pump(const Duration(seconds: 4));

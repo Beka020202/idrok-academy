@@ -5,6 +5,11 @@ Ishga tushirish / Запуск:
     python server.py
     python server.py --teacher-password YangiParol
 
+Rollar / Роли:
+    admin   — «ustoz» akkaunti: ustoz kodlari, sovg‘a buyurtmalari, hamma o‘quvchilar
+    teacher — kod bilan kirgan ustoz: faqat o‘z maktabi, o‘z testlari (XP berilmaydi)
+    student — o‘quvchi
+
 Muhit o‘zgaruvchilari / Переменные окружения (Render):
     PORT               — port
     TEACHER_PASSWORD   — ustoz paroli / пароль учителя
@@ -123,31 +128,86 @@ def init_db():
             ts REAL NOT NULL
         );
         """)
+        conn.executescript("""
+        CREATE TABLE IF NOT EXISTS teacher_codes (
+            code TEXT PRIMARY KEY,
+            region TEXT NOT NULL,
+            district TEXT NOT NULL,
+            school TEXT NOT NULL,
+            note TEXT NOT NULL DEFAULT '',
+            created REAL NOT NULL,
+            used_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            used_at REAL
+        );
+        CREATE TABLE IF NOT EXISTS ttests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            school_key TEXT NOT NULL,
+            teacher_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            title TEXT NOT NULL,
+            body TEXT NOT NULL,
+            active INTEGER NOT NULL DEFAULT 1,
+            created REAL NOT NULL,
+            updated REAL NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS ttests_school ON ttests(school_key);
+        CREATE TABLE IF NOT EXISTS tresults (
+            test_id INTEGER NOT NULL REFERENCES ttests(id) ON DELETE CASCADE,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            correct INTEGER NOT NULL,
+            total INTEGER NOT NULL,
+            best INTEGER NOT NULL,
+            tries INTEGER NOT NULL,
+            ts REAL NOT NULL,
+            PRIMARY KEY (test_id, user_id)
+        );
+        """)
         cols = {r["name"] for r in conn.execute("PRAGMA table_info(users)")}
-        for col in ("school", "city", "league"):
+        for col in ("school", "city", "league", "region", "district"):
             if col not in cols:
                 conn.execute(f"ALTER TABLE users ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
         if "promoted_at" not in cols:
             conn.execute("ALTER TABLE users ADD COLUMN promoted_at REAL NOT NULL DEFAULT 0")
+        # Eski «ustoz» akkaunti endi admin / старый аккаунт «ustoz» теперь админ
+        conn.execute("UPDATE users SET role='admin' WHERE role='teacher' AND username=?", (TEACHER_LOGIN,))
 
 
 def hash_pw(password, salt):
     return hashlib.pbkdf2_hmac("sha256", password.encode(), bytes.fromhex(salt), 200_000).hex()
 
 
-def create_user(conn, username, password, name, role="student", school="", city=""):
+def create_user(conn, username, password, name, role="student", school="", city="", region="", district=""):
     salt = secrets.token_hex(16)
     cur = conn.execute(
-        "INSERT INTO users (username, name, salt, pw_hash, role, state, created, school, city) VALUES (?,?,?,?,?,?,?,?,?)",
-        (username, name, salt, hash_pw(password, salt), role, "{}", time.time(), school, city))
+        "INSERT INTO users (username, name, salt, pw_hash, role, state, created, school, city, region, district) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+        (username, name, salt, hash_pw(password, salt), role, "{}", time.time(), school, city, region, district))
     return cur.lastrowid
 
 
+def school_key(row_or_dict):
+    """Maktabning yagona kaliti / единый ключ школы: viloyat|tuman|maktab."""
+    r = row_or_dict
+    return f"{r['region']}|{r['district']}|{r['school']}".lower()
+
+
+CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+
+
+def new_code():
+    part = lambda: "".join(secrets.choice(CODE_ALPHABET) for _ in range(4))  # noqa: E731
+    return f"IDR-{part()}-{part()}"
+
+
+def clean(value, limit=60):
+    return str(value or "").strip()[:limit]
+
+
 def ensure_teacher(new_password=None):
+    """Admin («ustoz») akkaunti / аккаунт администратора («ustoz»)."""
     with _write_lock, db() as conn:
-        row = conn.execute("SELECT id FROM users WHERE role='teacher'").fetchone()
+        row = conn.execute("SELECT id FROM users WHERE role='admin'").fetchone()
         if row is None:
-            create_user(conn, TEACHER_LOGIN, new_password or DEFAULT_TEACHER_PASSWORD, "Ustoz", "teacher")
+            create_user(conn, TEACHER_LOGIN, new_password or DEFAULT_TEACHER_PASSWORD, "Admin", "admin")
             return "created"
         if new_password:
             salt = secrets.token_hex(16)
@@ -174,7 +234,73 @@ def state_of(row):
 
 def public_user(row):
     return {"username": row["username"], "name": row["name"], "role": row["role"], "school": row["school"],
-            "city": row["city"], "league": row["league"], "has_photo": has_photo(row["id"]), "state": state_of(row)}
+            "city": row["city"], "region": row["region"], "district": row["district"], "league": row["league"],
+            "has_photo": has_photo(row["id"]), "state": state_of(row)}
+
+
+def student_row(r, extra=None):
+    s = state_of(r)
+    return {"username": r["username"], "name": r["name"] or r["username"], "school": r["school"],
+            "city": r["city"], "region": r["region"], "district": r["district"], "league": r["league"],
+            "level": level_of(s["xp_total"]), "streak": s["streak"], "done_n": len(s["done"]),
+            "has_photo": has_photo(r["id"]), **(extra or {})}
+
+
+# ---------------------------------------------------------------- ustoz testlari / тесты учителя
+MAX_QUESTIONS = 30
+
+
+def parse_test(data):
+    """Ustoz testini tekshiradi / проверяет тест учителя. None — xato / ошибка."""
+    title = clean(data.get("title"), 80)
+    text = clean(data.get("text"), 3000)
+    qs = data.get("questions")
+    if not title or not isinstance(qs, list) or not 1 <= len(qs) <= MAX_QUESTIONS:
+        return None
+    out = []
+    for q in qs:
+        if not isinstance(q, dict):
+            return None
+        kind = q.get("type")
+        question = clean(q.get("q"), 400)
+        if not question:
+            return None
+        if kind == "quiz":
+            opts = [clean(o, 200) for o in (q.get("options") or []) if clean(o, 200)]
+            ans = q.get("answer")
+            if not 2 <= len(opts) <= 4 or not isinstance(ans, int) or not 0 <= ans < len(opts):
+                return None
+            out.append({"type": "quiz", "q": question, "options": opts, "answer": ans})
+        elif kind == "fill":
+            answers = [clean(a, 100) for a in (q.get("answers") or []) if clean(a, 100)]
+            if not answers or len(answers) > 5:
+                return None
+            out.append({"type": "fill", "q": question, "answers": answers})
+        else:
+            return None
+    return {"title": title, "text": text, "questions": out}
+
+
+def public_test(row, with_answers=False):
+    body = json.loads(row["body"])
+    qs = body["questions"] if with_answers else [
+        {k: v for k, v in q.items() if k not in ("answer", "answers")} for q in body["questions"]]
+    return {"id": row["id"], "title": body["title"], "text": body.get("text", ""), "questions": qs,
+            "active": bool(row["active"]), "updated": row["updated"]}
+
+
+def grade_test(body, answers):
+    qs = body["questions"]
+    if not isinstance(answers, list):
+        answers = []
+    correct = 0
+    for k, q in enumerate(qs):
+        a = answers[k] if k < len(answers) else None
+        if q["type"] == "quiz" and isinstance(a, int) and a == q["answer"]:
+            correct += 1
+        elif q["type"] == "fill" and isinstance(a, str) and a.strip().lower() in [x.lower() for x in q["answers"]]:
+            correct += 1
+    return correct, len(qs)
 
 
 # ---------------------------------------------------------------- davrlar / периоды
@@ -315,46 +441,96 @@ class Handler(BaseHTTPRequestHandler):
 
             if path == "/api/leaderboard":
                 period = "month" if params.get("period") == "month" else "week"
-                league = user["league"] if user["role"] == "student" and user["league"] in LEAGUES else \
-                    (params.get("league") if params.get("league") in LEAGUES else "beginner")
-                earned = earned_since(conn, period_start(period), league)
-                rows = []
-                for r in conn.execute("SELECT * FROM users WHERE role='student' AND league=?", (league,)):
-                    s = state_of(r)
-                    rows.append({"username": r["username"], "name": r["name"] or r["username"], "school": r["school"],
-                                 "xp": earned.get(r["id"], 0), "level": level_of(s["xp_total"]), "streak": s["streak"],
-                                 "done": len(s["done"]), "has_photo": has_photo(r["id"])})
+                scope = "school" if params.get("scope") == "school" and user["role"] == "teacher" else "league"
+                if scope == "school":
+                    earned = earned_since(conn, period_start(period))
+                    key = school_key(user)
+                    pool = [r for r in conn.execute("SELECT * FROM users WHERE role='student'") if school_key(r) == key]
+                    league = ""
+                else:
+                    league = user["league"] if user["role"] == "student" and user["league"] in LEAGUES else \
+                        (params.get("league") if params.get("league") in LEAGUES else "beginner")
+                    earned = earned_since(conn, period_start(period), league)
+                    pool = conn.execute("SELECT * FROM users WHERE role='student' AND league=?", (league,)).fetchall()
+                rows = [student_row(r, {"xp": earned.get(r["id"], 0)}) for r in pool]
                 rows.sort(key=lambda x: (-x["xp"], x["name"].lower()))
                 me = next((i for i, r in enumerate(rows) if r["username"].lower() == user["username"].lower()), None)
-                return self.send_json(200, {"rows": rows[:50], "league": league, "period": period,
+                return self.send_json(200, {"rows": rows[:50], "league": league, "scope": scope, "period": period,
                                             "me": {"rank": me + 1, **rows[me]} if me is not None and me >= 50 else None})
+
+            if path == "/api/tests":
+                if user["role"] != "student":
+                    return self.send_json(403, {"error": "forbidden"})
+                key = school_key(user)
+                rows = []
+                for t in conn.execute("SELECT * FROM ttests WHERE school_key=? AND active=1 ORDER BY updated DESC", (key,)):
+                    res = conn.execute("SELECT * FROM tresults WHERE test_id=? AND user_id=?", (t["id"], user["id"])).fetchone()
+                    rows.append({**public_test(t), "result": None if res is None else
+                                 {"correct": res["correct"], "best": res["best"], "total": res["total"], "tries": res["tries"]}})
+                return self.send_json(200, {"rows": rows})
 
             if path == "/api/orders":
                 rows = [{"id": r["id"], "item_id": r["item_id"], "price": r["price"], "status": r["status"], "ts": r["ts"]}
                         for r in conn.execute("SELECT * FROM orders WHERE user_id=? ORDER BY ts DESC", (user["id"],))]
                 return self.send_json(200, {"rows": rows})
 
-            if user["role"] != "teacher" and path.startswith("/api/teacher/"):
+            if path.startswith("/api/teacher/") and user["role"] not in ("teacher", "admin"):
+                return self.send_json(403, {"error": "forbidden"})
+            if path.startswith("/api/admin/") and user["role"] != "admin":
                 return self.send_json(403, {"error": "forbidden"})
 
-            if path == "/api/teacher/students":
+            if path in ("/api/teacher/students", "/api/admin/students"):
                 week = earned_since(conn, period_start("week"))
                 lesson_order = list(LESSONS.keys())
+                key = school_key(user)
                 rows = []
                 for r in conn.execute("SELECT * FROM users WHERE role='student' ORDER BY name COLLATE NOCASE"):
+                    if user["role"] == "teacher" and school_key(r) != key:
+                        continue
                     s = state_of(r)
-                    rows.append({"username": r["username"], "name": r["name"] or r["username"], "school": r["school"],
-                                 "city": r["city"], "league": r["league"], "has_photo": has_photo(r["id"]),
-                                 "xp": s["xp"], "xp_total": s["xp_total"], "week_xp": week.get(r["id"], 0),
-                                 "streak": s["streak"], "today_xp": s["today_xp"], "last_day": s["last_day"],
-                                 "done": [lid for lid in lesson_order if s["done"].get(lid)]})
+                    rows.append(student_row(r, {
+                        "xp": s["xp"], "xp_total": s["xp_total"], "week_xp": week.get(r["id"], 0),
+                        "today_xp": s["today_xp"], "last_day": s["last_day"],
+                        "done": [lid for lid in lesson_order if s["done"].get(lid)]}))
                 return self.send_json(200, {"rows": rows, "lessons": lesson_order})
 
-            if path == "/api/teacher/orders":
+            if path == "/api/teacher/tests":
+                if user["role"] != "teacher":
+                    return self.send_json(403, {"error": "forbidden"})
+                rows = []
+                for t in conn.execute("SELECT * FROM ttests WHERE school_key=? ORDER BY updated DESC", (school_key(user),)):
+                    st = conn.execute("SELECT COUNT(*) AS n, AVG(best * 1.0 / total) AS avg FROM tresults WHERE test_id=?",
+                                      (t["id"],)).fetchone()
+                    rows.append({**public_test(t, with_answers=True), "mine": t["teacher_id"] == user["id"],
+                                 "submitted": st["n"], "avg": round((st["avg"] or 0) * 100)})
+                return self.send_json(200, {"rows": rows})
+
+            if path == "/api/teacher/results":
+                t = conn.execute("SELECT * FROM ttests WHERE id=? AND school_key=?",
+                                 (int(params.get("id") or 0), school_key(user))).fetchone()
+                if t is None:
+                    return self.send_json(404, {"error": "not_found"})
+                rows = [{"username": r["username"], "name": r["name"], "has_photo": has_photo(r["user_id"]),
+                         "correct": r["correct"], "best": r["best"], "total": r["total"], "tries": r["tries"], "ts": r["ts"]}
+                        for r in conn.execute("SELECT r.*, u.username, u.name FROM tresults r JOIN users u ON u.id=r.user_id "
+                                              "WHERE r.test_id=? ORDER BY r.best DESC, r.ts", (t["id"],))]
+                return self.send_json(200, {"rows": rows, "test": public_test(t, with_answers=True)})
+
+            if path == "/api/admin/codes":
+                rows = [{"code": r["code"], "region": r["region"], "district": r["district"], "school": r["school"],
+                         "note": r["note"], "created": r["created"], "used_at": r["used_at"],
+                         "used_by": r["uname"] or ""}
+                        for r in conn.execute("SELECT c.*, u.name AS uname FROM teacher_codes c "
+                                              "LEFT JOIN users u ON u.id=c.used_by ORDER BY c.created DESC LIMIT 300")]
+                return self.send_json(200, {"rows": rows})
+
+            if path == "/api/admin/orders":
                 rows = [{"id": r["id"], "item_id": r["item_id"], "price": r["price"], "status": r["status"], "ts": r["ts"],
-                         "username": r["username"], "name": r["name"], "school": r["school"], "city": r["city"]}
+                         "username": r["username"], "name": r["name"], "school": r["school"], "city": r["city"],
+                         "region": r["region"], "district": r["district"]}
                         for r in conn.execute(
-                            "SELECT o.*, u.username, u.name, u.school, u.city FROM orders o JOIN users u ON u.id=o.user_id "
+                            "SELECT o.*, u.username, u.name, u.school, u.city, u.region, u.district "
+                            "FROM orders o JOIN users u ON u.id=o.user_id "
                             "ORDER BY (o.status='new') DESC, o.ts DESC LIMIT 500")]
                 return self.send_json(200, {"rows": rows})
         return self.send_json(404, {"error": "not_found"})
@@ -382,19 +558,34 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(400, {"error": "short"})
             with _write_lock, db() as conn:
                 if path == "/api/register":
-                    name = str(data.get("name", "")).strip()[:40]
-                    school = str(data.get("school", "")).strip()[:60]
-                    city = str(data.get("city", "")).strip()[:60]
-                    if not name or not school or not city:
-                        return self.send_json(400, {"error": "profile"})
+                    name = clean(data.get("name"), 40)
+                    code = clean(data.get("code"), 20).upper()
                     photo = decode_photo(data.get("photo"))
-                    if photo is None:
-                        return self.send_json(400, {"error": "photo"})
+                    if not name:
+                        return self.send_json(400, {"error": "profile"})
+                    if code:
+                        # Ustoz: maktab koddan olinadi / учитель: школа берётся из кода
+                        c = conn.execute("SELECT * FROM teacher_codes WHERE code=?", (code,)).fetchone()
+                        if c is None or c["used_by"] is not None:
+                            return self.send_json(400, {"error": "code"})
+                        region, district, school, role = c["region"], c["district"], c["school"], "teacher"
+                    else:
+                        region, district = clean(data.get("region")), clean(data.get("district"))
+                        school = clean(data.get("school"))
+                        role = "student"
+                        if not region or not district or not school:
+                            return self.send_json(400, {"error": "profile"})
+                        if photo is None:
+                            return self.send_json(400, {"error": "photo"})
                     try:
-                        uid = create_user(conn, username, password, name, school=school, city=city)
+                        uid = create_user(conn, username, password, name, role=role, school=school, city=district,
+                                          region=region, district=district)
                     except sqlite3.IntegrityError:
                         return self.send_json(409, {"error": "taken"})
-                    photo_path(uid).write_bytes(photo)
+                    if code:
+                        conn.execute("UPDATE teacher_codes SET used_by=?, used_at=? WHERE code=?", (uid, time.time(), code))
+                    if photo is not None:
+                        photo_path(uid).write_bytes(photo)
                 row = conn.execute("SELECT * FROM users WHERE username=?", (username,)).fetchone()
                 if row is None or not secrets.compare_digest(row["pw_hash"], hash_pw(password, row["salt"])):
                     return self.send_json(401, {"error": "auth"})
@@ -406,6 +597,15 @@ class Handler(BaseHTTPRequestHandler):
             if user is None:
                 return self.send_json(401, {"error": "auth"})
             old = state_of(user)
+
+            game = ("/api/complete", "/api/placement", "/api/cancel", "/api/helper", "/api/claim", "/api/chest",
+                    "/api/shop/buy", "/api/tests/submit")
+            if path in game and user["role"] != "student":
+                return self.send_json(403, {"error": "forbidden"})
+            if path.startswith("/api/teacher/") and user["role"] != "teacher":
+                return self.send_json(403, {"error": "forbidden"})
+            if path.startswith("/api/admin/") and user["role"] != "admin":
+                return self.send_json(403, {"error": "forbidden"})
 
             def reply(new_state, extra=None):
                 save_state(conn, user["id"], old, new_state)
@@ -485,12 +685,70 @@ class Handler(BaseHTTPRequestHandler):
                 return reply(state, {"order_id": cur.lastrowid})
 
             if path == "/api/profile":
-                name = str(data.get("name", user["name"])).strip()[:40] or user["name"]
-                school = str(data.get("school", user["school"])).strip()[:60]
-                city = str(data.get("city", user["city"])).strip()[:60]
-                conn.execute("UPDATE users SET name=?, school=?, city=? WHERE id=?", (name, school, city, user["id"]))
+                name = clean(data.get("name", user["name"]), 40) or user["name"]
+                region, district, school = user["region"], user["district"], user["school"]
+                if user["role"] == "student":
+                    region = clean(data.get("region", region)) or region
+                    district = clean(data.get("district", district)) or district
+                    school = clean(data.get("school", school)) or school
+                conn.execute("UPDATE users SET name=?, region=?, district=?, school=?, city=? WHERE id=?",
+                             (name, region, district, school, district, user["id"]))
                 fresh = conn.execute("SELECT * FROM users WHERE id=?", (user["id"],)).fetchone()
                 return self.send_json(200, {"user": public_user(fresh)})
+
+            if path == "/api/tests/submit":
+                t = conn.execute("SELECT * FROM ttests WHERE id=? AND school_key=? AND active=1",
+                                 (int(data.get("test_id") or 0), school_key(user))).fetchone()
+                if t is None:
+                    return self.send_json(404, {"error": "not_found"})
+                body = json.loads(t["body"])
+                correct, total = grade_test(body, data.get("answers"))
+                old_r = conn.execute("SELECT * FROM tresults WHERE test_id=? AND user_id=?", (t["id"], user["id"])).fetchone()
+                best = max(correct, old_r["best"] if old_r else 0)
+                tries = (old_r["tries"] if old_r else 0) + 1
+                conn.execute("INSERT OR REPLACE INTO tresults (test_id, user_id, correct, total, best, tries, ts) "
+                             "VALUES (?,?,?,?,?,?,?)", (t["id"], user["id"], correct, total, best, tries, time.time()))
+                # XP berilmaydi / XP не начисляется
+                key = [{"answer": q.get("answer"), "answers": q.get("answers")} for q in body["questions"]]
+                return self.send_json(200, {"correct": correct, "total": total, "best": best, "key": key})
+
+            if path == "/api/teacher/tests/save":
+                parsed = parse_test(data)
+                if parsed is None:
+                    return self.send_json(400, {"error": "test"})
+                tid = int(data.get("id") or 0)
+                active = 1 if data.get("active", True) else 0
+                now = time.time()
+                if tid:
+                    t = conn.execute("SELECT * FROM ttests WHERE id=? AND teacher_id=?", (tid, user["id"])).fetchone()
+                    if t is None:
+                        return self.send_json(404, {"error": "not_found"})
+                    conn.execute("UPDATE ttests SET title=?, body=?, active=?, updated=? WHERE id=?",
+                                 (parsed["title"], json.dumps(parsed, ensure_ascii=False), active, now, tid))
+                else:
+                    tid = conn.execute("INSERT INTO ttests (school_key, teacher_id, title, body, active, created, updated) "
+                                       "VALUES (?,?,?,?,?,?,?)", (school_key(user), user["id"], parsed["title"],
+                                                                  json.dumps(parsed, ensure_ascii=False), active, now, now)).lastrowid
+                return self.send_json(200, {"id": tid})
+
+            if path == "/api/teacher/tests/delete":
+                conn.execute("DELETE FROM ttests WHERE id=? AND teacher_id=?", (int(data.get("id") or 0), user["id"]))
+                return self.send_json(200, {"ok": True})
+
+            if path == "/api/admin/codes":
+                region, district, school = clean(data.get("region")), clean(data.get("district")), clean(data.get("school"))
+                if not region or not district or not school:
+                    return self.send_json(400, {"error": "profile"})
+                code = new_code()
+                while conn.execute("SELECT 1 FROM teacher_codes WHERE code=?", (code,)).fetchone():
+                    code = new_code()
+                conn.execute("INSERT INTO teacher_codes (code, region, district, school, note, created) VALUES (?,?,?,?,?,?)",
+                             (code, region, district, school, clean(data.get("note"), 80), time.time()))
+                return self.send_json(200, {"code": code})
+
+            if path == "/api/admin/codes/revoke":
+                conn.execute("DELETE FROM teacher_codes WHERE code=? AND used_by IS NULL", (clean(data.get("code"), 20).upper(),))
+                return self.send_json(200, {"ok": True})
 
             if path == "/api/name":  # eski ilovalar uchun / для старых версий
                 conn.execute("UPDATE users SET name=? WHERE id=?", (str(data.get("name", "")).strip()[:40], user["id"]))
@@ -505,9 +763,7 @@ class Handler(BaseHTTPRequestHandler):
                 fresh = conn.execute("SELECT * FROM users WHERE id=?", (user["id"],)).fetchone()
                 return self.send_json(200, {"user": public_user(fresh)})
 
-            if path == "/api/teacher/order":
-                if user["role"] != "teacher":
-                    return self.send_json(403, {"error": "forbidden"})
+            if path == "/api/admin/order":
                 order = conn.execute("SELECT * FROM orders WHERE id=?", (int(data.get("order_id") or 0),)).fetchone()
                 status = str(data.get("status", ""))
                 if order is None or status not in ("delivered", "cancelled") or order["status"] != "new":

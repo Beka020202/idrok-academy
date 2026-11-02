@@ -18,7 +18,8 @@ class Api {
   final String base;
   String? token;
   // Bitta ulanishni qayta ishlatish — tezroq / одно соединение на все запросы — быстрее.
-  static final http.Client _client = http.Client();
+  // Testlarda soxta server bilan almashtiriladi / в тестах заменяется на поддельный сервер.
+  static http.Client client = http.Client();
 
   Api(String base, {this.token}) : base = _clean(base);
 
@@ -47,8 +48,8 @@ class Api {
     http.Response r;
     try {
       final f = data == null
-          ? _client.get(uri, headers: _headers)
-          : _client.post(uri, headers: _headers, body: jsonEncode(data));
+          ? client.get(uri, headers: _headers)
+          : client.post(uri, headers: _headers, body: jsonEncode(data));
       r = await f.timeout(timeout ?? kRequestTimeout);
     } on TimeoutException {
       throw const ApiError('conn');
@@ -106,4 +107,14 @@ Future<RunResult> runPython(String serverUrl, String code, {List<String> inputs 
 void warmUpRunner(String serverUrl) {
   final api = Api(runnerBase(serverUrl));
   api.call('/api/ping', null, const Duration(seconds: 75)).then((_) {}, onError: (_) {});
+}
+
+/// Python serveri javob beradimi / отвечает ли сервер Python.
+Future<bool> pingRunner(String serverUrl, {Duration timeout = const Duration(seconds: 25)}) async {
+  try {
+    await Api(runnerBase(serverUrl)).call('/api/ping', null, timeout);
+    return true;
+  } catch (_) {
+    return false;
+  }
 }

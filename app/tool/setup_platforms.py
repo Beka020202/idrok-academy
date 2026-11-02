@@ -141,11 +141,51 @@ def patch_android(root=APP):
     if "ACCESS_NOTIFICATION_POLICY" not in xml:
         xml = re.sub(r"(<manifest[^>]*>)",
                      r'\1\n    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY"/>', xml, count=1)
+    if "RECEIVE_BOOT_COMPLETED" not in xml:
+        xml = re.sub(r"(<manifest[^>]*>)",
+                     r'\1\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>', xml, count=1)
+    if "ScheduledNotificationReceiver" not in xml:
+        receivers = (
+            '\n        <receiver android:exported="false" '
+            'android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />\n'
+            '        <receiver android:exported="false" '
+            'android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">\n'
+            '            <intent-filter>\n'
+            '                <action android:name="android.intent.action.BOOT_COMPLETED"/>\n'
+            '                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>\n'
+            '                <action android:name="android.intent.action.QUICKBOOT_POWERON" />\n'
+            '                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>\n'
+            '            </intent-filter>\n'
+            '        </receiver>\n')
+        i = xml.rfind("</application>")
+        xml = xml[:i] + receivers + "    " + xml[i:]
     if "usesCleartextTraffic" not in xml:
         xml = re.sub(r"<application\b", '<application\n        android:usesCleartextTraffic="true"', xml, count=1)
     xml = re.sub(r'android:label="[^"]*"', f'android:label="{NAME}"', xml, count=1)
     manifest.write_text(xml, encoding="utf-8")
     print("✓ Android sozlandi / настроен")
+    return True
+
+
+def patch_gradle(root=APP):
+    """Eslatmalar uchun desugaring / desugaring для напоминаний (flutter_local_notifications)."""
+    kts = root / "android" / "app" / "build.gradle.kts"
+    groovy = root / "android" / "app" / "build.gradle"
+    f = kts if kts.exists() else groovy
+    if not f.exists():
+        print("! app/build.gradle topilmadi / не найден")
+        return False
+    src = f.read_text(encoding="utf-8")
+    if "desugar_jdk_libs" not in src:
+        flag = "isCoreLibraryDesugaringEnabled = true" if f == kts else "coreLibraryDesugaringEnabled true"
+        src, n = re.subn(r"compileOptions\s*\{", "compileOptions {\n        " + flag, src, count=1)
+        if n == 0:
+            src = re.sub(r"android\s*\{", "android {\n    compileOptions {\n        " + flag + "\n    }", src, count=1)
+        dep = ('coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")' if f == kts
+               else "coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'")
+        src += "\ndependencies {\n    " + dep + "\n}\n"
+        f.write_text(src, encoding="utf-8")
+    print("✓ Gradle (desugaring)")
     return True
 
 
@@ -177,7 +217,7 @@ def patch_ios(root=APP):
 def main():
     if "--patch-only" not in sys.argv:
         run_flutter_create()
-    ok = patch_android() & patch_ios() & patch_main_activity()
+    ok = patch_android() & patch_ios() & patch_main_activity() & patch_gradle()
     if "--patch-only" not in sys.argv:
         make_icons()
     print("\nTayyor! Endi / Готово! Теперь:  flutter run   yoki / или   flutter build apk --release" if ok else "")

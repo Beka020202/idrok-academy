@@ -39,6 +39,7 @@ class _RankingTabState extends State<RankingTab> {
   bool _loading = false;
   String _period = 'week';
   String _league = 'beginner';
+  String _scope = 'school'; // ustoz uchun / для учителя: school | league
 
   @override
   void initState() {
@@ -56,7 +57,9 @@ class _RankingTabState extends State<RankingTab> {
       _error = '';
     });
     try {
-      final q = 'period=$_period${s.isTeacher ? '&league=$_league' : ''}';
+      final q = 'period=$_period'
+          '${s.isTeacher && _scope == 'school' ? '&scope=school' : ''}'
+          '${s.isStaff ? '&league=$_league' : ''}';
       final res = await s.api.call('/api/leaderboard?$q');
       final rows = res['rows'];
       _rows = rows is List ? [for (final r in rows) if (r is Map) Map<String, dynamic>.from(r)] : [];
@@ -94,23 +97,42 @@ class _RankingTabState extends State<RankingTab> {
     }
 
     final c = s.c;
-    final league = s.isTeacher ? _league : s.st.league;
+    final league = s.isStaff ? _league : s.st.league;
+    final schoolScope = s.isTeacher && _scope == 'school';
     final header = AppCard(
       padding: const EdgeInsets.all(S.x4),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        if (s.isTeacher) ...[
+          Segmented<String>(
+            key: const ValueKey('rank-scope'),
+            values: const ['school', 'league'],
+            labels: [s.t('my_school'), s.t('whole_app')],
+            value: _scope,
+            onChanged: (v) {
+              setState(() {
+                _scope = v;
+                _rows = null;
+              });
+              _load();
+            },
+          ),
+          const SizedBox(height: S.x4),
+        ],
         Row(children: [
-          LeagueBadge(league: league, size: 48),
+          schoolScope
+              ? const IconTile(Icons.school_rounded, size: 48, vivid: true)
+              : LeagueBadge(league: league, size: 48),
           const SizedBox(width: S.x3),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(s.tr(kLeagueNames[league] ?? kLeagueNames['beginner']!),
+              Text(schoolScope ? s.school : s.tr(kLeagueNames[league] ?? kLeagueNames['beginner']!),
                   style: AppType.headline.copyWith(color: c.text)),
               const SizedBox(height: 2),
               Text(s.t('rank_rule'), style: AppType.caption.copyWith(color: c.text2)),
             ]),
           ),
         ]),
-        if (s.isTeacher) ...[
+        if (s.isStaff && !schoolScope) ...[
           const SizedBox(height: S.x4),
           Segmented<String>(
             values: kLeagues,

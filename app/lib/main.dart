@@ -12,8 +12,11 @@ import 'screens/play.dart';
 import 'screens/profile.dart';
 import 'screens/profile_form.dart';
 import 'screens/ranking.dart';
+import 'screens/reminder.dart';
 import 'screens/shop.dart';
 import 'screens/teacher.dart';
+import 'screens/teacher_tests.dart';
+import 'screens/admin.dart';
 import 'state.dart';
 import 'theme.dart';
 import 'widgets.dart';
@@ -96,6 +99,8 @@ class RootScreen extends StatelessWidget {
       screen = const ProfileSetupScreen(key: ValueKey('setup'));
     } else if (s.needsPlacement) {
       screen = const LessonScreen.placement(key: ValueKey('placement'));
+    } else if (s.needsReminder) {
+      screen = const ReminderScreen(key: ValueKey('reminder'));
     } else {
       screen = const HomeShell(key: ValueKey('home'));
     }
@@ -217,7 +222,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
     final tabs = s.tabs;
-    final tab = tabs.contains(s.tab) || s.tab == 'profile' || s.tab == 'shop' ? s.tab : 'home';
+    final tab = tabs.contains(s.tab) || (s.tab == 'shop' && s.isStudent) ? s.tab : tabs.first;
 
     final Widget body = switch (tab) {
       'courses' => const CoursesTab(),
@@ -226,6 +231,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       'teacher' => const TeacherTab(),
       'profile' => const ProfileTab(),
       'shop' => const ShopTab(),
+      'tests' => const TeacherTestsTab(),
+      'admin' => const AdminCodesTab(),
+      'orders' => const AdminOrdersTab(),
       _ => const HomeTab(),
     };
 
@@ -235,14 +243,17 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       'play': (Icons.terminal_rounded, s.t('play')),
       'ranking': (Icons.leaderboard_rounded, s.t('ranking')),
       'profile': (Icons.person_rounded, s.t('profile')),
-      'teacher': (Icons.school_rounded, s.t('teacher')),
+      'teacher': (Icons.groups_rounded, s.t(s.isAdmin ? 'students_tab' : 'my_school')),
+      'tests': (Icons.assignment_rounded, s.t('tests_tab')),
+      'admin': (Icons.key_rounded, s.t('codes_tab')),
+      'orders': (Icons.redeem_rounded, s.t('orders_tab')),
     };
     final sel = tabs.contains(tab) ? tabs.indexOf(tab) : tabs.length - 1;
 
     return PopScope(
-      canPop: tab == 'home',
+      canPop: tab == tabs.first,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) s.go('home');
+        if (!didPop) s.go(tabs.first);
       },
       child: GestureDetector(
         onTap: () => FocusManager.instance.primaryFocus?.unfocus(),

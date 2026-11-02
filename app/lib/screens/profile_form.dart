@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../lessons.dart';
 import '../main.dart' show AppLogo;
 import '../state.dart';
 import '../theme.dart';
@@ -124,11 +126,313 @@ class PhotoPicker extends StatelessWidget {
   }
 }
 
-/// Ism, maktab, shahar maydonlari / поля имени, школы, города.
+/// Tanlangan maktab / выбранная школа.
+class SchoolValue {
+  String region, district, number, name;
+  SchoolKind kind;
+  SchoolValue({this.region = '', this.district = '', this.kind = SchoolKind.school, this.number = '', this.name = ''});
+
+  factory SchoolValue.of(String region, String district, String label) {
+    final (k, n, t) = parseSchool(label);
+    return SchoolValue(region: region, district: district, kind: label.isEmpty ? SchoolKind.school : k, number: n, name: t);
+  }
+
+  String get label => schoolLabel(kind, number: number, name: name);
+  bool get complete => region.isNotEmpty && district.isNotEmpty && label.isNotEmpty;
+}
+
+/// Viloyat → tuman → maktab raqami ("-maktab" o‘zi qo‘shiladi).
+/// Область → район → номер школы ("-maktab" добавляется сам).
+class SchoolPicker extends StatefulWidget {
+  final SchoolValue value;
+  final VoidCallback onChanged;
+  const SchoolPicker({super.key, required this.value, required this.onChanged});
+
+  @override
+  State<SchoolPicker> createState() => _SchoolPickerState();
+}
+
+class _SchoolPickerState extends State<SchoolPicker> {
+  late final _number = TextEditingController(text: widget.value.number);
+  late final _name = TextEditingController(text: widget.value.name);
+
+  @override
+  void dispose() {
+    _number.dispose();
+    _name.dispose();
+    super.dispose();
+  }
+
+  SchoolValue get v => widget.value;
+
+  void _changed() {
+    setState(() {});
+    widget.onChanged();
+  }
+
+  Future<void> _pickRegion() async {
+    final s = AppScope.read(context);
+    final r = await pickFromList(context,
+        title: s.t('region'), items: [for (final r in kRegions) (r.id, s.tr(r.name))], selected: v.region);
+    if (r == null || r == v.region) return;
+    v.region = r;
+    v.district = '';
+    _changed();
+  }
+
+  Future<void> _pickDistrict() async {
+    final s = AppScope.read(context);
+    final reg = regionById(v.region);
+    if (reg == null) {
+      await _pickRegion();
+      return;
+    }
+    final d = await pickFromList(context,
+        title: s.t('district'), items: [for (final d in reg.districts) (d, d)], selected: v.district);
+    if (d == null) return;
+    v.district = d;
+    _changed();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppScope.of(context);
+    final c = s.c;
+    final reg = regionById(v.region);
+    final suffix = v.kind == SchoolKind.idum ? '-IDUM' : '-maktab';
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      _SelectTile(
+        key: const ValueKey('school-region'),
+        icon: Icons.map_rounded,
+        label: s.t('region'),
+        value: reg == null ? '' : s.tr(reg.name),
+        hint: s.t('region_hint'),
+        onTap: _pickRegion,
+      ),
+      const SizedBox(height: S.x3),
+      _SelectTile(
+        key: const ValueKey('school-district'),
+        icon: Icons.location_city_rounded,
+        label: s.t('district'),
+        value: v.district,
+        hint: s.t(reg == null ? 'region_first' : 'district_hint'),
+        onTap: _pickDistrict,
+        enabled: reg != null,
+      ),
+      const SizedBox(height: S.x4),
+      Padding(
+        padding: const EdgeInsets.only(left: 4, bottom: 8),
+        child: Text(s.t('school'), style: AppType.footnote.copyWith(color: c.text2, fontWeight: w7)),
+      ),
+      Wrap(spacing: S.x2, runSpacing: S.x2, children: [
+        for (final k in SchoolKind.values)
+          Pressable(
+            key: ValueKey('kind-${k.name}'),
+            onTap: () {
+              v.kind = k;
+              _changed();
+            },
+            scale: 0.95,
+            child: AnimatedContainer(
+              duration: Motion.of(context, Motion.fast),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              decoration: BoxDecoration(
+                borderRadius: R.all(R.pill),
+                gradient: v.kind == k ? c.accentGradient : null,
+                color: v.kind == k ? null : (c.isDark ? c.surfaceAlt : kWhite),
+                border: Border.all(color: v.kind == k ? const Color(0x00000000) : c.hairlineStrong),
+              ),
+              child: Text(s.tr(kSchoolKinds[k]!),
+                  style: AppType.subhead.copyWith(color: v.kind == k ? kWhite : c.text, fontWeight: w7)),
+            ),
+          ),
+      ]),
+      AnimatedSize(
+        duration: Motion.of(context, Motion.base),
+        curve: Motion.curve,
+        alignment: Alignment.topCenter,
+        child: Padding(
+          padding: EdgeInsets.only(top: v.kind == SchoolKind.president ? 0 : S.x3),
+          child: kindHasNumber(v.kind)
+              ? AppTextField(
+                  key: const ValueKey('school-number'),
+                  controller: _number,
+                  hint: s.t('school_number'),
+                  icon: Icons.tag_rounded,
+                  keyboardType: TextInputType.number,
+                  maxLength: 4,
+                  suffixText: suffix,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  textInputAction: TextInputAction.done,
+                  onChanged: (x) {
+                    v.number = x;
+                    _changed();
+                  },
+                )
+              : kindHasName(v.kind)
+                  ? AppTextField(
+                      key: const ValueKey('school-name'),
+                      controller: _name,
+                      hint: s.t(v.kind == SchoolKind.lyceum ? 'lyceum_hint' : 'private_hint'),
+                      icon: Icons.apartment_rounded,
+                      maxLength: 40,
+                      textCapitalization: TextCapitalization.words,
+                      onChanged: (x) {
+                        v.name = x;
+                        _changed();
+                      },
+                    )
+                  : const SizedBox(width: double.infinity),
+        ),
+      ),
+      if (v.complete) ...[
+        const SizedBox(height: S.x3),
+        Container(
+          key: const ValueKey('school-summary'),
+          padding: const EdgeInsets.symmetric(horizontal: S.x3 + 2, vertical: S.x3),
+          decoration: BoxDecoration(color: c.accentSoft, borderRadius: R.all(R.md - 2)),
+          child: Row(children: [
+            Icon(Icons.check_circle_rounded, size: 18, color: c.accentText),
+            const SizedBox(width: S.x2),
+            Expanded(
+              child: Text('${v.label} · ${v.district}',
+                  style: AppType.subhead.copyWith(color: c.accentText, fontWeight: w8)),
+            ),
+          ]),
+        ),
+      ],
+    ]);
+  }
+}
+
+class _SelectTile extends StatelessWidget {
+  final IconData icon;
+  final String label, value, hint;
+  final VoidCallback onTap;
+  final bool enabled;
+  const _SelectTile(
+      {super.key, required this.icon, required this.label, required this.value, required this.hint, required this.onTap,
+      this.enabled = true});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = colorsOf(context);
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Padding(
+        padding: const EdgeInsets.only(left: 4, bottom: 6),
+        child: Text(label, style: AppType.footnote.copyWith(color: c.text2, fontWeight: w7)),
+      ),
+      Pressable(
+        onTap: onTap,
+        scale: 0.98,
+        child: Opacity(
+          opacity: enabled ? 1 : 0.55,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+            decoration: BoxDecoration(
+              color: c.isDark ? c.surfaceAlt : kWhite,
+              borderRadius: R.all(R.md - 2),
+              border: Border.all(color: c.hairlineStrong),
+              boxShadow: c.isDark ? null : Shadows.soft(c),
+            ),
+            child: Row(children: [
+              Icon(icon, size: 20, color: value.isEmpty ? c.text3 : c.accent),
+              const SizedBox(width: S.x3),
+              Expanded(
+                child: Text(value.isEmpty ? hint : value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppType.bodyStrong.copyWith(color: value.isEmpty ? c.text3 : c.text)),
+              ),
+              Icon(Icons.unfold_more_rounded, size: 20, color: c.text3),
+            ]),
+          ),
+        ),
+      ),
+    ]);
+  }
+}
+
+/// Qidiruvli ro‘yxatdan tanlash / выбор из списка с поиском.
+Future<String?> pickFromList(BuildContext context,
+    {required String title, required List<(String, String)> items, String selected = ''}) {
+  return showAppSheet<String>(context, builder: (_) => _ListSheet(title: title, items: items, selected: selected));
+}
+
+class _ListSheet extends StatefulWidget {
+  final String title, selected;
+  final List<(String, String)> items;
+  const _ListSheet({required this.title, required this.items, required this.selected});
+
+  @override
+  State<_ListSheet> createState() => _ListSheetState();
+}
+
+class _ListSheetState extends State<_ListSheet> {
+  String q = '';
+
+  String _norm(String x) => x.toLowerCase().replaceAll(RegExp('[‘’ʻʼ\'`]'), '');
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppScope.of(context);
+    final c = s.c;
+    final list = [for (final it in widget.items) if (q.isEmpty || _norm(it.$2).contains(_norm(q))) it];
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.78),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text(widget.title, textAlign: TextAlign.center, style: AppType.title3.copyWith(color: c.text)),
+        const SizedBox(height: S.x3),
+        if (widget.items.length > 8) ...[
+          AppTextField(
+            key: const ValueKey('list-search'),
+            hint: s.t('search'),
+            icon: Icons.search_rounded,
+            onChanged: (x) => setState(() => q = x),
+          ),
+          const SizedBox(height: S.x3),
+        ],
+        Flexible(
+          child: ListView.separated(
+            shrinkWrap: true,
+            physics: const BouncingScrollPhysics(),
+            itemCount: list.length,
+            separatorBuilder: (_, __) => Divider(height: 1, color: c.hairline, indent: 16, endIndent: 16),
+            itemBuilder: (_, k) {
+              final (id, label) = list[k];
+              final on = id == widget.selected;
+              return Pressable(
+                key: ValueKey('pick-$id'),
+                onTap: () => Navigator.of(context).pop(id),
+                scale: 0.99,
+                child: Container(
+                  color: const Color(0x00000000),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  child: Row(children: [
+                    Expanded(
+                      child: Text(label,
+                          style: AppType.bodyStrong.copyWith(color: on ? c.accentText : c.text, fontWeight: on ? w8 : w6)),
+                    ),
+                    if (on) Icon(Icons.check_rounded, color: c.accentText, size: 20),
+                  ]),
+                ),
+              );
+            },
+          ),
+        ),
+      ]),
+    );
+  }
+}
+
+/// Ism va maktab maydonlari / поля имени и школы.
 class ProfileFields extends StatelessWidget {
-  final TextEditingController name, school, city;
-  final VoidCallback? onDone;
-  const ProfileFields({super.key, required this.name, required this.school, required this.city, this.onDone});
+  final TextEditingController name;
+  final SchoolValue school;
+  final VoidCallback onSchool;
+  final bool showSchool;
+  const ProfileFields(
+      {super.key, required this.name, required this.school, required this.onSchool, this.showSchool = true});
 
   @override
   Widget build(BuildContext context) {
@@ -144,29 +448,10 @@ class ProfileFields extends StatelessWidget {
         autocorrect: false,
         textInputAction: TextInputAction.next,
       ),
-      const SizedBox(height: S.x4),
-      AppTextField(
-        key: const ValueKey('f-school'),
-        controller: school,
-        label: s.t('school'),
-        hint: s.t('school_hint'),
-        icon: Icons.school_rounded,
-        maxLength: 60,
-        textCapitalization: TextCapitalization.sentences,
-        textInputAction: TextInputAction.next,
-      ),
-      const SizedBox(height: S.x4),
-      AppTextField(
-        key: const ValueKey('f-city'),
-        controller: city,
-        label: s.t('city'),
-        hint: s.t('city_hint'),
-        icon: Icons.location_on_rounded,
-        maxLength: 60,
-        textCapitalization: TextCapitalization.words,
-        textInputAction: TextInputAction.done,
-        onSubmitted: onDone == null ? null : (_) => onDone!(),
-      ),
+      if (showSchool) ...[
+        const SizedBox(height: S.x4),
+        SchoolPicker(value: school, onChanged: onSchool),
+      ],
     ]);
   }
 }
@@ -181,8 +466,7 @@ class ProfileSetupScreen extends StatefulWidget {
 
 class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final _name = TextEditingController();
-  final _school = TextEditingController();
-  final _city = TextEditingController();
+  late SchoolValue _school;
   Uint8List? _photo;
   String _error = '';
   int _tick = 0;
@@ -193,15 +477,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     super.initState();
     final s = AppScope.read(context);
     _photo = s.myPhoto;
-    _school.text = s.localSchool;
-    _city.text = s.localCity;
+    _name.text = s.displayName;
+    _school = SchoolValue.of(s.region, s.district, s.school);
   }
 
   @override
   void dispose() {
     _name.dispose();
-    _school.dispose();
-    _city.dispose();
     super.dispose();
   }
 
@@ -209,9 +491,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     final s = AppScope.read(context);
     FocusManager.instance.primaryFocus?.unfocus();
     String err = '';
-    if (_name.text.trim().isEmpty || _school.text.trim().isEmpty || _city.text.trim().isEmpty) {
+    if (_name.text.trim().isEmpty) {
       err = s.t('err_profile');
-    } else if (_photo == null) {
+    } else if (!_school.complete) {
+      err = s.t('err_school');
+    } else if (_photo == null && !s.online) {
       err = s.t('err_photo');
     }
     if (err.isNotEmpty) {
@@ -222,7 +506,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       return;
     }
     setState(() => _saving = true);
-    await s.saveLocalProfile(name: _name.text, school: _school.text, city: _city.text, photo: _photo);
+    if (s.online) {
+      await s.updateProfile(name: _name.text, school: _school.label, city: _school.district, region: _school.region);
+    } else {
+      await s.saveLocalProfile(
+          name: _name.text, school: _school.label, city: _school.district, region: _school.region, photo: _photo);
+    }
     if (mounted) setState(() => _saving = false);
   }
 
@@ -262,7 +551,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       child: Column(children: [
                         Text(s.t('setup_title'), textAlign: TextAlign.center, style: AppType.title1.copyWith(color: c.text)),
                         const SizedBox(height: S.x2),
-                        Text(s.t('setup_sub'), textAlign: TextAlign.center, style: AppType.callout.copyWith(color: c.text2)),
+                        Text(s.t(s.online ? 'setup_sub_online' : 'setup_sub'), textAlign: TextAlign.center, style: AppType.callout.copyWith(color: c.text2)),
                       ]),
                     ),
                     const SizedBox(height: S.x6),
@@ -273,18 +562,20 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         radius: R.xxl,
                         padding: const EdgeInsets.all(S.x5),
                         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                          Center(
-                            child: PhotoPicker(
-                              bytes: _photo,
-                              name: _name.text,
-                              onPicked: (b) => setState(() => _photo = b),
+                          if (!s.online) ...[
+                            Center(
+                              child: PhotoPicker(
+                                bytes: _photo,
+                                name: _name.text,
+                                onPicked: (b) => setState(() => _photo = b),
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: S.x2),
-                          Text(s.t('photo_need'),
-                              textAlign: TextAlign.center, style: AppType.footnote.copyWith(color: c.text2)),
-                          const SizedBox(height: S.x5),
-                          ProfileFields(name: _name, school: _school, city: _city, onDone: _save),
+                            const SizedBox(height: S.x2),
+                            Text(s.t('photo_need'),
+                                textAlign: TextAlign.center, style: AppType.footnote.copyWith(color: c.text2)),
+                            const SizedBox(height: S.x5),
+                          ],
+                          ProfileFields(name: _name, school: _school, onSchool: () => setState(() {})),
                           if (_error.isNotEmpty) ...[
                             const SizedBox(height: S.x4),
                             ErrorBox(_error, tick: _tick),

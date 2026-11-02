@@ -77,7 +77,14 @@ class AppState extends ChangeNotifier {
   String courseId = 'html';
 
   // Oflayn profil / офлайн-профиль
-  String localName = '', localSchool = '', localCity = '';
+  String localName = '', localSchool = '', localCity = '', localRegion = '';
+
+  /// Eslatma vaqti (daqiqada, -1 — o‘chirilgan) / время напоминания (минуты, -1 — выкл.)
+  int reminderMinutes = -1;
+  bool reminderAsked = false;
+
+  /// Saqlangan dars xulosalari / сохранённые карточки-конспекты.
+  List<String> savedCards = [];
 
   /// O‘z rasmim (kesh) / моё фото (кэш)
   Uint8List? myPhoto;
@@ -102,7 +109,13 @@ class AppState extends ChangeNotifier {
 
   // ---------------------------------------------------------------- yordamchilar / помощники
   bool get online => user != null;
-  bool get isTeacher => online && user!['role'] == 'teacher';
+  String get role => online ? '${user!['role'] ?? 'student'}' : 'student';
+  bool get isTeacher => role == 'teacher';
+  bool get isAdmin => role == 'admin';
+  bool get isStudent => role == 'student';
+
+  /// Ustoz yoki admin — o‘qimaydi / учитель или админ — не учится.
+  bool get isStaff => isTeacher || isAdmin;
   bool get isDark => theme == 'dark' || (theme == 'system' && platformBrightness == Brightness.dark);
   AppColors get c => isDark ? kDark : kLight;
 
@@ -123,16 +136,23 @@ class AppState extends ChangeNotifier {
   }
 
   String get school => online ? '${user!['school'] ?? ''}' : localSchool;
-  String get city => online ? '${user!['city'] ?? ''}' : localCity;
+  String get city => online ? '${user!['district'] ?? user!['city'] ?? ''}' : localCity;
+  String get region => online ? '${user!['region'] ?? ''}' : localRegion;
+  String get district => city;
   String get username => online ? '${user!['username'] ?? ''}' : '';
   String get league => st.league;
   String get leagueName => tr(kLeagueNames[st.league] ?? kLeagueNames['beginner']!);
 
   /// Oflayn rejimda profil hali to‘ldirilmagan / офлайн-профиль ещё не заполнен.
-  bool get needsProfile => !online && mode == 'offline' && localName.trim().isEmpty;
+  bool get needsProfile =>
+      (!online && mode == 'offline' && (localName.trim().isEmpty || localRegion.isEmpty)) ||
+      (online && isStudent && region.isEmpty);
 
   /// Isinish mashqi (liga aniqlash) kerak / нужна разминка (определение лиги).
-  bool get needsPlacement => !isTeacher && st.league.isEmpty;
+  bool get needsPlacement => isStudent && st.league.isEmpty;
+
+  /// Isinishdan keyin eslatma vaqtini so‘rash / после разминки спросить время напоминания.
+  bool get needsReminder => isStudent && !reminderAsked;
 
   /// Boshqa o‘quvchi rasmi manzili / адрес фото другого ученика.
   String photoUrl(String user) => '${api.base}/api/photo/${Uri.encodeComponent(user)}';
@@ -153,7 +173,11 @@ class AppState extends ChangeNotifier {
     return i == 0 || st.isDone(ls[i - 1].id);
   }
 
-  List<String> get tabs => ['home', 'courses', 'play', 'ranking', isTeacher ? 'teacher' : 'profile'];
+  List<String> get tabs => isAdmin
+      ? ['admin', 'orders', 'teacher', 'ranking', 'profile']
+      : isTeacher
+          ? ['teacher', 'tests', 'ranking', 'profile']
+          : ['home', 'courses', 'play', 'ranking', 'profile'];
 
   /// Yuqoridan chiquvchi bildirishnoma / всплывающее уведомление сверху.
   void toast(String text, {IconData icon = Icons.info_rounded}) {
@@ -223,6 +247,10 @@ class AppState extends ChangeNotifier {
     localName = s('name', '');
     localSchool = s('school', '');
     localCity = s('city', '');
+    localRegion = s('region', '');
+    reminderMinutes = j['reminder'] is int ? j['reminder'] as int : -1;
+    reminderAsked = j['reminder_asked'] == true;
+    savedCards = j['cards'] is List ? [for (final x in j['cards'] as List) '$x'] : [];
     final ph = s('photo', '');
     if (ph.isNotEmpty) {
       try {
@@ -246,6 +274,10 @@ class AppState extends ChangeNotifier {
       'name': localName,
       'school': localSchool,
       'city': localCity,
+      'region': localRegion,
+      'reminder': reminderMinutes,
+      'reminder_asked': reminderAsked,
+      'cards': savedCards,
       'photo': myPhoto == null ? '' : base64Encode(myPhoto!),
     };
     try {
@@ -272,12 +304,18 @@ class AppState extends ChangeNotifier {
     String name = '',
     String school = '',
     String city = '',
+    String region = '',
+    String code = '',
     Uint8List? photo,
   }) async {
     if (username.trim().length < 3 || password.length < 4) return t('err_short');
+    final asTeacher = code.trim().isNotEmpty;
     if (register) {
-      if (name.trim().isEmpty || school.trim().isEmpty || city.trim().isEmpty) return t('err_profile');
-      if (photo == null) return t('err_photo');
+      if (name.trim().isEmpty) return t('err_profile');
+      if (!asTeacher) {
+        if (school.trim().isEmpty || city.trim().isEmpty || region.trim().isEmpty) return t('err_school');
+        if (photo == null) return t('err_photo');
+      }
     }
     if (busy) return null;
     busy = true;
@@ -292,9 +330,9 @@ class AppState extends ChangeNotifier {
             'password': password,
             if (register) ...{
               'name': name.trim(),
-              'school': school.trim(),
-              'city': city.trim(),
-              'photo': base64Encode(photo!),
+              if (asTeacher) 'code': code.trim().toUpperCase(),
+              if (!asTeacher) ...{'region': region, 'district': city, 'school': school},
+              if (photo != null) 'photo': base64Encode(photo),
             },
           },
           const Duration(seconds: 40));
@@ -305,8 +343,10 @@ class AppState extends ChangeNotifier {
       mode = 'online';
       bootError = '';
       tab = 'home';
-      if (register) myPhoto = photo;
+      myPhoto = register ? photo : null;
+      tab = 'home';
       _setUser(res['user']);
+      if (tabs.isNotEmpty) tab = tabs.first;
       await savePrefs();
       return null;
     } on ApiError catch (e) {
@@ -316,6 +356,7 @@ class AppState extends ChangeNotifier {
         'short' => 'err_short',
         'photo' => 'err_photo',
         'profile' => 'err_profile',
+        'code' => 'err_code',
         _ => 'err_auth'
       });
     } finally {
@@ -351,23 +392,26 @@ class AppState extends ChangeNotifier {
 
   // ---------------------------------------------------------------- profil / профиль
   /// Oflayn profilni saqlash / сохранить офлайн-профиль.
-  Future<void> saveLocalProfile({required String name, required String school, required String city, Uint8List? photo}) async {
+  Future<void> saveLocalProfile(
+      {required String name, required String school, required String city, String region = '', Uint8List? photo}) async {
     localName = name.trim().length > 40 ? name.trim().substring(0, 40) : name.trim();
     localSchool = school.trim();
     localCity = city.trim();
+    localRegion = region.trim();
     if (photo != null) myPhoto = photo;
     await savePrefs();
     notifyListeners();
   }
 
   /// Ism, maktab, shahar / имя, школа, город.
-  Future<void> updateProfile({String? name, String? school, String? city}) async {
+  Future<void> updateProfile({String? name, String? school, String? city, String? region}) async {
     if (online) {
       try {
         final res = await api.call('/api/profile', {
           if (name != null) 'name': name.trim(),
           if (school != null) 'school': school.trim(),
-          if (city != null) 'city': city.trim(),
+          if (city != null) 'district': city.trim(),
+          if (region != null) 'region': region.trim(),
         });
         _setUser(res['user']);
       } on ApiError {
@@ -377,6 +421,7 @@ class AppState extends ChangeNotifier {
       if (name != null && name.trim().isNotEmpty) localName = name.trim();
       if (school != null) localSchool = school.trim();
       if (city != null) localCity = city.trim();
+      if (region != null) localRegion = region.trim();
       await savePrefs();
     }
     notifyListeners();
@@ -557,19 +602,67 @@ class AppState extends ChangeNotifier {
   }
 
   Future<List<ShopOrder>> teacherOrders() async {
-    final res = await api.call('/api/teacher/orders');
+    final res = await api.call('/api/admin/orders');
     final rows = res['rows'];
     return rows is List ? [for (final r in rows) if (r is Map) ShopOrder.fromJson(Map<String, dynamic>.from(r))] : [];
   }
 
   Future<bool> setOrderStatus(int id, String status) async {
     try {
-      await api.call('/api/teacher/order', {'order_id': id, 'status': status});
+      await api.call('/api/admin/order', {'order_id': id, 'status': status});
       return true;
     } on ApiError {
       toast(t('err_conn'), icon: Icons.cloud_off_rounded);
       return false;
     }
+  }
+
+  // ---------------------------------------------------------------- ustoz va admin / учитель и админ
+  /// Ro‘yxat so‘rovi (xato bo‘lsa — null) / запрос списка (null при ошибке).
+  Future<List<Map<String, dynamic>>?> fetchRows(String path) async {
+    try {
+      final res = await api.call(path);
+      final rows = res['rows'];
+      return rows is List ? [for (final r in rows) if (r is Map) Map<String, dynamic>.from(r)] : [];
+    } on ApiError {
+      return null;
+    }
+  }
+
+  /// Javob yoki null (xato bo‘lsa xabar chiqadi) / ответ или null (при ошибке — уведомление).
+  Future<Map<String, dynamic>?> post(String path, Map<String, Object?> data) async {
+    if (busy) return null;
+    busy = true;
+    notifyListeners();
+    try {
+      return await api.call(path, data);
+    } on ApiError catch (e) {
+      toast(e.code == 'conn' ? t('err_conn') : t('error'), icon: Icons.cloud_off_rounded);
+      return null;
+    } finally {
+      busy = false;
+      notifyListeners();
+    }
+  }
+
+  // ---------------------------------------------------------------- eslatma va konspekt / напоминание и конспект
+  Future<void> setReminder(int minutes) async {
+    reminderMinutes = minutes;
+    reminderAsked = true;
+    await savePrefs();
+    notifyListeners();
+  }
+
+  bool isCardSaved(String lessonId) => savedCards.contains(lessonId);
+
+  Future<void> toggleCard(String lessonId) async {
+    if (savedCards.contains(lessonId)) {
+      savedCards.remove(lessonId);
+    } else {
+      savedCards.add(lessonId);
+    }
+    await savePrefs();
+    notifyListeners();
   }
 
   Future<void> resetProgress() async {
