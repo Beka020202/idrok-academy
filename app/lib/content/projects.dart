@@ -78,7 +78,7 @@ final Map<String, Project> kProjects = {
         'Напишите настоящую программу-викторину со списком вопросов, циклом и очками.'),
     checks: [
       (const Tr('Kamida 3 ta savolli ro‘yxat', 'Список минимум из 3 вопросов'), (c) => _has(r'=\s*\[.*,.*,.*\]', c)),
-      (const Tr('for sikli', 'Цикл for'), (c) => _has(r'for\s+\w+\s+in\s', c)),
+      (const Tr('for sikli', 'Цикл for'), (c) => _has(r'for\s+[\w\s,()]+?\s+in\s', c)),
       (const Tr('input() bilan javob olish', 'Получение ответа через input()'), (c) => _has(r'input\(', c)),
       (const Tr('Ochkoni oshirish (+= 1)', 'Увеличение очков (+= 1)'), (c) => _has(r'\+=\s*1|=\s*\w+\s*\+\s*1', c)),
       (const Tr('Yakuniy natijani chiqarish', 'Вывод итогового результата'), (c) => _count(r'print\(', c) >= 1),
