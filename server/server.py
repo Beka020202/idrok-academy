@@ -23,6 +23,7 @@ import hashlib
 import json
 import os
 import secrets
+import signal
 import socket
 import sqlite3
 import statistics
@@ -35,6 +36,7 @@ from pathlib import Path
 from progress import (HELPER_COST, LEAGUES, cancel_test, claim_quest, complete_lesson, level_of, normalize,
                       open_chest, promote, set_league, spend)
 from runner import client_ip, handle_run
+import cloud  # noqa: E402  Supabase zaxirasi / резервная копия Supabase
 
 HERE = Path(__file__).resolve().parent
 DB_PATH = Path(os.environ.get("KODLA_DB_PATH", str(HERE / "kodla.db")))
@@ -150,6 +152,7 @@ def init_db():
             updated REAL NOT NULL
         );
         CREATE INDEX IF NOT EXISTS ttests_school ON ttests(school_key);
+        CREATE TABLE IF NOT EXISTS photos (user_id INTEGER PRIMARY KEY, ts REAL NOT NULL);
         CREATE TABLE IF NOT EXISTS portfolio (
             user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
             course TEXT NOT NULL,
@@ -230,8 +233,44 @@ def photo_path(user_id):
     return PHOTO_DIR / f"{int(user_id)}.img"
 
 
+# Rasmi bor foydalanuvchilar (bazada saqlanadi — Supabase bilan birga tiklanadi)
+# Пользователи с фото (хранится в базе — восстанавливается вместе с Supabase)
+_photo_ids = set()
+
+
+def load_photo_ids():
+    with _write_lock, db() as conn:
+        for f in PHOTO_DIR.glob("*.img"):
+            if f.stem.isdigit():
+                conn.execute("INSERT OR IGNORE INTO photos (user_id, ts) VALUES (?,?)", (int(f.stem), time.time()))
+        _photo_ids.clear()
+        _photo_ids.update(r["user_id"] for r in conn.execute("SELECT user_id FROM photos"))
+
+
 def has_photo(user_id):
-    return photo_path(user_id).exists()
+    return int(user_id) in _photo_ids or photo_path(user_id).exists()
+
+
+def save_photo(conn, user_id, data):
+    photo_path(user_id).write_bytes(data)
+    conn.execute("INSERT OR REPLACE INTO photos (user_id, ts) VALUES (?,?)", (int(user_id), time.time()))
+    _photo_ids.add(int(user_id))
+    cloud.put_async(f"photos/{int(user_id)}.img", data)
+
+
+def read_photo(user_id):
+    p = photo_path(user_id)
+    if p.exists():
+        return p.read_bytes()
+    if cloud.enabled:
+        try:
+            data = cloud.get(f"photos/{int(user_id)}.img")
+        except Exception:
+            data = None
+        if data:
+            p.write_bytes(data)
+            return data
+    return None
 
 
 def state_of(row):
@@ -485,9 +524,9 @@ class Handler(BaseHTTPRequestHandler):
 
             if path.startswith("/api/photo/"):
                 target = conn.execute("SELECT id FROM users WHERE username=?", (path[len("/api/photo/"):],)).fetchone()
-                if target is None or not has_photo(target["id"]):
+                data = read_photo(target["id"]) if target is not None and has_photo(target["id"]) else None
+                if data is None:
                     return self.send_json(404, {"error": "not_found"})
-                data = photo_path(target["id"]).read_bytes()
                 self.send_response(200)
                 self.send_header("Content-Type", "image/png" if data[:4] == b"\x89PNG" else "image/jpeg")
                 self.send_header("Content-Length", str(len(data)))
@@ -645,7 +684,7 @@ class Handler(BaseHTTPRequestHandler):
                     if code:
                         conn.execute("UPDATE teacher_codes SET used_by=?, used_at=? WHERE code=?", (uid, time.time(), code))
                     if photo is not None:
-                        photo_path(uid).write_bytes(photo)
+                        save_photo(conn, uid, photo)
                 row = conn.execute("SELECT * FROM users WHERE username=?", (username,)).fetchone()
                 if row is None or not secrets.compare_digest(row["pw_hash"], hash_pw(password, row["salt"])):
                     return self.send_json(401, {"error": "auth"})
@@ -832,7 +871,7 @@ class Handler(BaseHTTPRequestHandler):
                 photo = decode_photo(data.get("photo"))
                 if photo is None:
                     return self.send_json(400, {"error": "photo"})
-                photo_path(user["id"]).write_bytes(photo)
+                save_photo(conn, user["id"], photo)
                 fresh = conn.execute("SELECT * FROM users WHERE id=?", (user["id"],)).fetchone()
                 return self.send_json(200, {"user": public_user(fresh)})
 
@@ -888,7 +927,14 @@ def main():
         raise SystemExit("ERROR: Render Environment'da TEACHER_PASSWORD ni kamida 12 belgili qilib o‘rnating. "
                          "/ Задайте TEACHER_PASSWORD (минимум 12 символов) в Render Environment.")
 
+    try:
+        cloud.restore(DB_PATH)
+    except Exception as e:
+        # Zaxirani o‘qib bo‘lmasa, eski ma’lumotni yo‘qotmaslik uchun to‘xtaymiz.
+        # Если копию не прочитать — останавливаемся, чтобы не затереть старые данные.
+        raise SystemExit(f"ERROR: Supabase zaxirasini o‘qib bo‘lmadi / не удалось прочитать копию: {e}")
     init_db()
+    load_photo_ids()
     status = ensure_teacher(args.teacher_password)
     ip = lan_ip()
     print("=" * 60)
@@ -903,10 +949,22 @@ def main():
     print("=" * 60, flush=True)
     with _write_lock, db() as conn:
         conn.execute("DELETE FROM tokens WHERE created<?", (time.time() - TOKEN_DAYS * 86400,))
+    cloud.start(DB_PATH)
+
+    def stop(*_):
+        # Render to‘xtatishidan oldin oxirgi zaxira / последняя копия перед остановкой Render
+        try:
+            cloud.backup(DB_PATH, force=True)
+        except Exception as e:
+            print(f"  Supabase: oxirgi zaxira xatosi / ошибка последней копии: {e}", flush=True)
+        raise SystemExit(0)
+
+    signal.signal(signal.SIGTERM, stop)
     httpd = ThreadingHTTPServer(("0.0.0.0", args.port), Handler)
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
+        stop()
         print("\nServer to‘xtadi / Сервер остановлен")
 
 

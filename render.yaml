@@ -12,7 +12,11 @@ services:
     name: kodla-api
     runtime: python
     rootDir: server
-    # BEPUL reja: server qayta ishga tushsa akkauntlar va natijalar O‘CHADI (faqat sinov uchun).
+    # BEPUL reja + Supabase: ma’lumotlar Supabase Storage'da saqlanadi (server/cloud.py).
+    #   Render → kodla-api → Environment ga qo‘shing: SUPABASE_URL va SUPABASE_KEY (service_role).
+    # Бесплатный план + Supabase: данные хранятся в Supabase Storage (server/cloud.py).
+    #   Добавьте в Render → kodla-api → Environment: SUPABASE_URL и SUPABASE_KEY (service_role).
+    # Supabase'siz: server qayta ishga tushsa akkauntlar va natijalar O‘CHADI.
     # Doimiy saqlash uchun: plan: starter + pastdagi disk qismini qaytaring (~7$/oy).
     # БЕСПЛАТНЫЙ план: при перезапуске аккаунты и результаты СТИРАЮТСЯ (только для теста).
     # Для постоянного хранения: plan: starter + верните блок disk ниже (~7$/мес).

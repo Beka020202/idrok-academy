@@ -286,6 +286,8 @@ class _AuthScreenState extends State<AuthScreen> {
                         label: Text(s.t('server'), style: AppType.footnote.copyWith(color: c.text2)),
                       ),
                     ),
+                    // Serversiz rejim faqat avtomatik testlar uchun / офлайн-режим только для автотестов
+                    if (s.testMode) ...[
                     const SizedBox(height: S.x2),
                     Row(children: [
                       Expanded(child: Divider(color: c.hairline)),
@@ -304,6 +306,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       icon: Icons.wifi_off_rounded,
                       expand: true,
                     ),
+                    ],
                   ],
                 ),
               ),

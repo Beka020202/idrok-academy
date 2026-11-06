@@ -93,7 +93,7 @@ class RootScreen extends StatelessWidget {
       screen = IntroVideo(key: const ValueKey('intro'), onDone: s.finishIntro);
     } else if (!s.ready) {
       screen = const SplashScreen(key: ValueKey('splash'));
-    } else if (!s.online && s.mode != 'offline') {
+    } else if (!s.online && (s.mode != 'offline' || !s.testMode)) {
       screen = const AuthScreen(key: ValueKey('auth'));
     } else if (s.needsProfile) {
       screen = const ProfileSetupScreen(key: ValueKey('setup'));
