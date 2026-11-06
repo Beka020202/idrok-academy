@@ -86,6 +86,10 @@ class AppState extends ChangeNotifier {
   /// Saqlangan dars xulosalari / сохранённые карточки-конспекты.
   List<String> savedCards = [];
 
+  /// Portfolio loyihalari: kurs → kod, kurs → havola / проекты портфолио: курс → код, курс → ссылка.
+  Map<String, String> projects = {};
+  Map<String, String> projectLinks = {};
+
   /// O‘z rasmim (kesh) / моё фото (кэш)
   Uint8List? myPhoto;
 
@@ -251,6 +255,9 @@ class AppState extends ChangeNotifier {
     reminderMinutes = j['reminder'] is int ? j['reminder'] as int : -1;
     reminderAsked = j['reminder_asked'] == true;
     savedCards = j['cards'] is List ? [for (final x in j['cards'] as List) '$x'] : [];
+    Map<String, String> strMap(Object? v) => v is Map ? {for (final e in v.entries) '${e.key}': '${e.value}'} : {};
+    projects = strMap(j['projects']);
+    projectLinks = strMap(j['project_links']);
     final ph = s('photo', '');
     if (ph.isNotEmpty) {
       try {
@@ -278,6 +285,8 @@ class AppState extends ChangeNotifier {
       'reminder': reminderMinutes,
       'reminder_asked': reminderAsked,
       'cards': savedCards,
+      'projects': projects,
+      'project_links': projectLinks,
       'photo': myPhoto == null ? '' : base64Encode(myPhoto!),
     };
     try {
@@ -663,6 +672,29 @@ class AppState extends ChangeNotifier {
     }
     await savePrefs();
     notifyListeners();
+  }
+
+  // ---------------------------------------------------------------- portfolio
+  Future<void> saveProject(String course, String code) async {
+    projects[course] = code;
+    await savePrefs();
+    notifyListeners();
+  }
+
+  /// Loyihani nashr qilish va havola olish (faqat onlayn) / опубликовать проект и получить ссылку.
+  Future<String?> publishProject(String course, String mode, String title, String code) async {
+    await saveProject(course, code);
+    if (!online) {
+      toast(t('project_online'), icon: Icons.wifi_off_rounded);
+      return null;
+    }
+    final res = await post('/api/portfolio', {'course': course, 'mode': mode, 'title': title, 'code': code});
+    if (res == null) return null;
+    final link = '${api.base}${res['path']}';
+    projectLinks[course] = link;
+    await savePrefs();
+    notifyListeners();
+    return link;
   }
 
   Future<void> resetProgress() async {

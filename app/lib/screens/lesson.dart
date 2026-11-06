@@ -12,6 +12,7 @@ import '../progress.dart';
 import '../state.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'cards.dart';
 import 'helper.dart';
 import 'play.dart' show formatRun;
 
@@ -1297,6 +1298,18 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
             Appear(
               index: 4,
               child: Wrap(alignment: WrapAlignment.center, spacing: S.x2, runSpacing: S.x2, children: extras),
+            ),
+          ],
+          if (keyPoints(lesson!).isNotEmpty) ...[
+            const SizedBox(height: S.x5),
+            Appear(
+              index: 5,
+              child: Pressable(
+                key: const ValueKey('summary-open'),
+                onTap: () => showSummary(context, lesson!, course!),
+                scale: 0.98,
+                child: SummaryCard(lesson: lesson!, course: course!, compact: true),
+              ),
             ),
           ],
           const SizedBox(height: S.x7),

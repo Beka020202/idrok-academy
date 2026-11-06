@@ -236,6 +236,23 @@ void main() {
     });
   });
 
+  group('portfolio', () {
+    const good = {
+      'html': '<h1>Aziza</h1>\n<p>Men 8-sinfda o‘qiyman va kod yozaman.</p>\n<ul><li>kitob</li><li>futbol</li><li>kod</li></ul>\n<a href="https://idrok.uz">sayt</a>',
+      'css': '<style>body { background: #eef; } h1 { color: blue; } .card { padding: 20px; border-radius: 16px; }</style><div class="card"><h1>A</h1></div>',
+      'js': '<button onclick="play()">Go</button><script>let score = 0; function play() { let a = prompt("2+2"); if (a == "4") { score++; } }</script>',
+      'py': 'savollar = [("a", "1"), ("b", "2"), ("c", "3")]\nochko = 0\nfor s, j in savollar:\n    if input(s) == j:\n        ochko += 1\nprint(ochko)',
+      'ai': 'javoblar = {"salom": "Salom!", "isming": "Bot"}\nwhile True:\n    gap = input().lower()\n    if gap == "xayr":\n        break\n    print(javoblar.get(gap, "?"))',
+    };
+    for (final co in kCourses) {
+      test('project for ${co.id}: starter fails, a real solution passes', () {
+        final p = kProjects[co.id]!;
+        expect(p.passes(p.starter), isFalse);
+        expect(p.results(good[co.id]!), everyElement(isTrue), reason: co.id);
+      });
+    }
+  });
+
   group('offline', () {
     test('python practice turns into a normal question without the server', () {
       var n = 0;

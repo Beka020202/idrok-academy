@@ -6,6 +6,10 @@
 
 import 'dart:math';
 
+import 'anim.dart';
+
+export 'anim.dart';
+
 /// Ikki tildagi matn / текст на двух языках.
 class Tr {
   final String uz;
@@ -32,6 +36,7 @@ class LessonStep {
   // nazariya / теория
   final Tr? h, p;
   final String? code;
+  final AnimScene? anim; // animatsiya / анимация
 
   // savol / вопрос
   final Tr? q;
@@ -61,6 +66,7 @@ class LessonStep {
     this.h,
     this.p,
     this.code,
+    this.anim,
     this.q,
     this.options = const [],
     this.answer = 0,
@@ -78,8 +84,8 @@ class LessonStep {
     this.solution,
   });
 
-  const LessonStep.read({required Tr h, required Tr p, String? code})
-      : this._(type: StepType.read, h: h, p: p, code: code);
+  const LessonStep.read({required Tr h, required Tr p, String? code, AnimScene? anim})
+      : this._(type: StepType.read, h: h, p: p, code: code, anim: anim);
 
   const LessonStep.quiz(
       {required Tr q, required List<Tr> o, required int answer, String? code, bool mono = false, Tr? e, int difficulty = 1})

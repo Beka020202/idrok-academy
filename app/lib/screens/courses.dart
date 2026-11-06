@@ -5,6 +5,7 @@ import '../progress.dart';
 import '../state.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'cards.dart' show ProjectCard;
 import 'lesson.dart';
 import 'teacher_tests.dart' show SchoolTestsSection;
 
@@ -24,6 +25,7 @@ class CoursesTab extends StatelessWidget {
         SectionHeader(s.t('course_path')),
         _Path(course: course),
         _Chest(course: course),
+        ProjectCard(course: course),
         const SchoolTestsSection(),
       ],
     );

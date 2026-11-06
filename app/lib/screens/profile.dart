@@ -5,6 +5,7 @@ import '../progress.dart';
 import '../state.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'cards.dart' show CardsTile;
 import 'profile_form.dart';
 import 'reminder.dart' show ReminderTile;
 
@@ -131,6 +132,7 @@ class _ProfileTabState extends State<ProfileTab> {
       (Icons.emoji_events_rounded, s.t('b4'),
           kCourses.any((x) => s.lessonsOf(x).isNotEmpty && s.progressOf(x) == s.lessonsOf(x).length)),
       (Icons.military_tech_rounded, s.t('b5'), st.league == 'advanced' || st.league == 'master'),
+      (Icons.workspace_premium_rounded, s.t('portfolio'), s.projectLinks.isNotEmpty),
     ];
     final badgeGrid = AppCard(
       padding: const EdgeInsets.symmetric(vertical: S.x5, horizontal: S.x3),
@@ -234,6 +236,7 @@ class _ProfileTabState extends State<ProfileTab> {
           badgeGrid,
         ],
         if (!s.isStaff) const ReminderTile(),
+        if (!s.isStaff) const CardsTile(),
         SectionHeader(s.t('settings')),
         settings,
         bottom,

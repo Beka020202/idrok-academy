@@ -150,6 +150,16 @@ def init_db():
             updated REAL NOT NULL
         );
         CREATE INDEX IF NOT EXISTS ttests_school ON ttests(school_key);
+        CREATE TABLE IF NOT EXISTS portfolio (
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            course TEXT NOT NULL,
+            slug TEXT NOT NULL UNIQUE,
+            title TEXT NOT NULL,
+            mode TEXT NOT NULL,
+            code TEXT NOT NULL,
+            updated REAL NOT NULL,
+            PRIMARY KEY (user_id, course)
+        );
         CREATE TABLE IF NOT EXISTS tresults (
             test_id INTEGER NOT NULL REFERENCES ttests(id) ON DELETE CASCADE,
             user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -289,6 +299,41 @@ def public_test(row, with_answers=False):
             "active": bool(row["active"]), "updated": row["updated"]}
 
 
+# ---------------------------------------------------------------- portfolio
+import html as _html  # noqa: E402
+
+PORTFOLIO_MODES = ("html", "py")
+MAX_PROJECT = 20_000
+
+
+def portfolio_page(row):
+    """Loyihaning ochiq sahifasi / публичная страница проекта."""
+    e = _html.escape
+    who = e(row["name"] or row["username"])
+    school = e(" · ".join(x for x in (row["school"], row["district"]) if x))
+    title = e(row["title"])
+    if row["mode"] == "html":
+        work = (f'<iframe sandbox="allow-scripts" srcdoc="{e(row["code"], quote=True)}" '
+                'title="project"></iframe>')
+    else:
+        work = f'<pre><code>{e(row["code"])}</code></pre>'
+    return f"""<!DOCTYPE html><html lang="uz"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{title} — {who} · Idrok Academy</title>
+<style>
+*{{box-sizing:border-box}}body{{margin:0;font-family:-apple-system,system-ui,Segoe UI,Roboto,sans-serif;
+background:linear-gradient(160deg,#2EA6FF,#0047D6);min-height:100vh;color:#0A1226;padding:24px 16px}}
+.wrap{{max-width:860px;margin:0 auto}}.top{{color:#fff;margin-bottom:18px}}
+.brand{{font-weight:800;letter-spacing:-.3px;opacity:.9}}h1{{margin:6px 0 4px;font-size:28px;letter-spacing:-.6px}}
+.who{{opacity:.9}}.card{{background:#fff;border-radius:22px;padding:14px;box-shadow:0 20px 50px rgba(0,30,90,.35)}}
+iframe{{width:100%;height:70vh;border:0;border-radius:14px;background:#fff}}
+pre{{margin:0;background:#0A1226;color:#E8F0FF;padding:18px;border-radius:14px;overflow:auto;font-size:14px;line-height:1.55}}
+.foot{{color:#fff;opacity:.8;text-align:center;margin-top:18px;font-size:13px}}
+</style></head><body><div class="wrap"><div class="top"><div class="brand">IDROK ACADEMY · Portfolio</div>
+<h1>{title}</h1><div class="who">{who}{(" — " + school) if school else ""}</div></div>
+<div class="card">{work}</div><div class="foot">Idrok Academy ilovasida yaratilgan</div></div></body></html>"""
+
+
 def grade_test(body, answers):
     qs = body["questions"]
     if not isinstance(answers, list):
@@ -418,6 +463,21 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, {"ok": True, "app": "idrok"})
         if path == "/api/shop":
             return self.send_json(200, {"items": list(SHOP.values())})
+        if path.startswith("/p/"):
+            with db() as conn:
+                row = conn.execute("SELECT p.*, u.name, u.username, u.school, u.district FROM portfolio p "
+                                   "JOIN users u ON u.id=p.user_id WHERE p.slug=?", (path[3:],)).fetchone()
+            if row is None:
+                return self.send_json(404, {"error": "not_found"})
+            body = portfolio_page(row).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; frame-src 'self'; "
+                             "img-src https: data:")
+            self.end_headers()
+            self.wfile.write(body)
+            return None
         with db() as conn:
             user = self.current_user(conn)
             if user is None:
@@ -599,7 +659,7 @@ class Handler(BaseHTTPRequestHandler):
             old = state_of(user)
 
             game = ("/api/complete", "/api/placement", "/api/cancel", "/api/helper", "/api/claim", "/api/chest",
-                    "/api/shop/buy", "/api/tests/submit")
+                    "/api/shop/buy", "/api/tests/submit", "/api/portfolio")
             if path in game and user["role"] != "student":
                 return self.send_json(403, {"error": "forbidden"})
             if path.startswith("/api/teacher/") and user["role"] != "teacher":
@@ -711,6 +771,19 @@ class Handler(BaseHTTPRequestHandler):
                 # XP berilmaydi / XP не начисляется
                 key = [{"answer": q.get("answer"), "answers": q.get("answers")} for q in body["questions"]]
                 return self.send_json(200, {"correct": correct, "total": total, "best": best, "key": key})
+
+            if path == "/api/portfolio":
+                course = clean(data.get("course"), 20)
+                mode = clean(data.get("mode"), 10)
+                code = str(data.get("code") or "")
+                if course not in COURSE_LESSONS or mode not in PORTFOLIO_MODES or not code.strip() or len(code) > MAX_PROJECT:
+                    return self.send_json(400, {"error": "project"})
+                old_p = conn.execute("SELECT slug FROM portfolio WHERE user_id=? AND course=?", (user["id"], course)).fetchone()
+                slug = old_p["slug"] if old_p else secrets.token_urlsafe(6)
+                conn.execute("INSERT OR REPLACE INTO portfolio (user_id, course, slug, title, mode, code, updated) "
+                             "VALUES (?,?,?,?,?,?,?)", (user["id"], course, slug, clean(data.get("title"), 80) or course,
+                                                        mode, code, time.time()))
+                return self.send_json(200, {"slug": slug, "path": f"/p/{slug}"})
 
             if path == "/api/teacher/tests/save":
                 parsed = parse_test(data)

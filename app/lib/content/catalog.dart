@@ -7,6 +7,7 @@ import 'html.dart';
 import 'js.dart';
 import 'model.dart';
 import 'python.dart';
+import 'scenes.dart';
 
 /// XP harakatga qarab: bir xil uzunlikdagi darslar har bir ligada bir xil XP beradi.
 /// XP за усилия: уроки одинаковой длины дают одинаковый XP в любой лиге.
@@ -14,7 +15,19 @@ const int kLessonXp = 20;
 const int kProjectXp = 30;
 
 Lesson _l(String id, String course, Tr title, StepBuilder b, {int xp = kLessonXp, Set<String>? leagues}) =>
-    Lesson(id: id, courseId: course, xp: xp, title: title, builder: b, leagues: leagues);
+    Lesson(id: id, courseId: course, xp: xp, title: title, builder: _withScene(id, b), leagues: leagues);
+
+/// Nazariyadan keyin animatsiya qadamini qo‘shadi / добавляет шаг-анимацию после теории.
+StepBuilder _withScene(String id, StepBuilder b) {
+  final sc = kScenes[id];
+  if (sc == null) return b;
+  return (g) {
+    final steps = [...b(g)];
+    final at = steps.indexWhere((x) => x.type == StepType.read) + 1;
+    steps.insert(at, LessonStep.read(h: sc.$1, p: sc.$2, anim: sc.$3(g)));
+    return steps;
+  };
+}
 
 final List<Course> kCourses = [
   Course(id: 'html', tag: '</>', color: '#0A6CFF', name: const Tr('HTML', 'HTML'),
