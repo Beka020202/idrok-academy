@@ -1639,7 +1639,7 @@ class Header extends StatelessWidget {
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: c.accentText),
               const SizedBox(width: 4),
-              Text(s.t('back'), style: AppType.callout.copyWith(color: c.accentText, fontWeight: w6)),
+              Text(s.t('back_short'), style: AppType.callout.copyWith(color: c.accentText, fontWeight: w6)),
             ]),
           ),
         const Spacer(),

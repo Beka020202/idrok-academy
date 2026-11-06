@@ -329,6 +329,7 @@ const Map<String, Map<String, Object>> kStrings = {
     'learn_tab': 'O‘qish',
     'me_tab': 'Men',
     'off': 'O‘chiq',
+    'back_short': 'Orqaga',
   },
   'ru': {
     'home': 'Главная',
@@ -658,5 +659,6 @@ const Map<String, Map<String, Object>> kStrings = {
     'learn_tab': 'Учёба',
     'me_tab': 'Я',
     'off': 'Выкл.',
+    'back_short': 'Назад',
   },
 };
