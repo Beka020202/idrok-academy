@@ -72,8 +72,9 @@ Add an entry to `kScenes` in `app/lib/content/scenes.dart` with the lesson id. S
 ## 5. Safe small tasks (do one at a time)
 - Add 2–3 more quiz questions to a lesson (keep both languages, keep 3 wrong options, all different).
 - Fix a typo in Uzbek or Russian text in `i18n.dart`.
-- Add a new beginner AI lesson (`ai6`): copy `ai4` style, add it to `catalog.dart` **and**
-  `server/content/lessons.json` with the same id, `xp: 20`, `leagues: ["beginner"]`, plus an animation in `scenes.dart`.
+- Add a new beginner AI lesson (next free id: `ai8`): copy `ai6` style, add it to `catalog.dart` **and**
+  `server/content/lessons.json` with the same id, `xp: 20`, `leagues: ["beginner"]`, plus an animation in `scenes.dart`
+  (the tests require exactly one animation per lesson). Advanced project lessons: next id `aiA5`; master: `aiM5` (`xp: 30`).
 - Add a new chat animation for a lesson (copy an `ai*` entry in `scenes.dart`).
 - Improve a theory text (`LessonStep.read`) to be simpler for a 12-year-old beginner.
 
