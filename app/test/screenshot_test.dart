@@ -330,7 +330,7 @@ void main() {
     await settle(t, 900);
     await shot(t, '40-register-teacher');
 
-    await state.auth(register: false, username: 'teacher', password: '1234', serverUrl: 'http://test');
+    await t.runAsync(() => state.auth(register: false, username: 'teacher', password: '1234', serverUrl: 'http://test'));
     await settle(t, 1500);
     await shot(t, '41-teacher-school');
     state.go('tests');
@@ -353,7 +353,7 @@ void main() {
     await state.logout();
     await settle(t, 900);
     role = 'admin';
-    await state.auth(register: false, username: 'admin', password: '1234', serverUrl: 'http://test');
+    await t.runAsync(() => state.auth(register: false, username: 'admin', password: '1234', serverUrl: 'http://test'));
     await settle(t, 1500);
     await shot(t, '46-admin-codes');
     await tapKey(t, const ValueKey('school-region'));
@@ -363,6 +363,7 @@ void main() {
     await t.enterText(find.descendant(of: find.byKey(const ValueKey('school-number')), matching: find.byType(TextField)), '12');
     FocusManager.instance.primaryFocus?.unfocus();
     await tapKey(t, const ValueKey('code-make'));
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
     await settle(t, 1200);
     await shot(t, '47-admin-new-code');
     await t.tapAt(const Offset(30, 60));

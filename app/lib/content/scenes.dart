@@ -5,8 +5,8 @@ import 'model.dart';
 
 typedef SceneDef = (Tr h, Tr p, AnimScene Function(Gen g));
 
-const _watch = Tr('▶ tugmasini bosing yoki qadamma-qadam o‘ting — kompyuter nima qilayotganini ko‘rasiz.',
-    'Нажмите ▶ или идите по шагам — вы увидите, что делает компьютер.');
+const _watch = Tr('Pastdagi ko‘k tugmani bosing yoki o‘qlar bilan qadamma-qadam o‘ting — kompyuter nima qilayotganini ko‘rasiz.',
+    'Нажмите синюю кнопку внизу или идите по шагам стрелками — вы увидите, что делает компьютер.');
 
 RenderEl _e(String tag, String text, int line, [Map<String, String> style = const {}]) => RenderEl(tag, text, line, style: style);
 

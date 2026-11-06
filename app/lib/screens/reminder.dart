@@ -50,7 +50,7 @@ class SkyBackground extends StatelessWidget {
     // Kunduzi 6→18, kechasi 18→30 (ertasi 6) / днём 6→18, ночью 18→30
     final p = day ? (hour - 6) / 12.5 : ((hour < 6 ? hour + 24 : hour) - 18.5) / 11.5;
     final x = -0.85 + 1.7 * p.clamp(0.0, 1.0);
-    final y = -0.62 - 0.3 * math.sin(math.pi * p.clamp(0.0, 1.0));
+    final y = -0.78 - 0.17 * math.sin(math.pi * p.clamp(0.0, 1.0));
     final dur = Motion.of(context, const Duration(milliseconds: 500));
     return AnimatedContainer(
       duration: dur,
@@ -76,8 +76,8 @@ class SkyBackground extends StatelessWidget {
           child: IgnorePointer(
             child: AnimatedContainer(
               duration: dur,
-              width: day ? 92 : 70,
-              height: day ? 92 : 70,
+              width: day ? 76 : 58,
+              height: day ? 76 : 58,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
