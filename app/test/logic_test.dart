@@ -236,6 +236,31 @@ void main() {
     });
   });
 
+  group('animations', () {
+    test('every lesson has a valid animation step', () {
+      for (final e in kAllLessons.entries) {
+        for (final seed in [1, 2, 3]) {
+          final anims = [for (final st in e.value.$1.build(seed, 1)) if (st.anim != null) st.anim!];
+          expect(anims.length, 1, reason: e.key);
+          final a = anims.first;
+          expect(a.frames.length, greaterThanOrEqualTo(3), reason: e.key);
+          for (final f in a.frames) {
+            expect(f.line, lessThan(a.code.isEmpty ? 1 : a.code.length), reason: e.key);
+            if (a.kind == 'render') expect(f.reveal, lessThanOrEqualTo(a.els.length), reason: e.key);
+            if (a.kind == 'chat') expect(f.reveal, lessThanOrEqualTo(a.chat.length), reason: e.key);
+          }
+        }
+      }
+    });
+
+    test('loop animation computes the right sum', () {
+      final sc = traceLoop(Gen(5, 1), 'py');
+      final last = sc.frames.last;
+      final n = int.parse(last.vars['i']!);
+      expect(last.out.last, '${n * (n + 1) ~/ 2}');
+    });
+  });
+
   group('portfolio', () {
     const good = {
       'html': '<h1>Aziza</h1>\n<p>Men 8-sinfda o‘qiyman va kod yozaman.</p>\n<ul><li>kitob</li><li>futbol</li><li>kod</li></ul>\n<a href="https://idrok.uz">sayt</a>',

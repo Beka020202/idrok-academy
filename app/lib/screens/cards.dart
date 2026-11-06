@@ -33,7 +33,7 @@ List<KeyPoint> keyPoints(Lesson l) {
   final steps = l.build(1, 1);
   return [
     for (final st in steps)
-      if (st.type == StepType.read && st.h != null && st.p != null)
+      if (st.type == StepType.read && st.anim == null && st.h != null && st.p != null)
         KeyPoint(st.h!, Tr(_firstSentences(st.p!.uz), _firstSentences(st.p!.ru)), st.code),
   ];
 }

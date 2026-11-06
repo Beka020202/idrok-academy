@@ -12,6 +12,7 @@ import '../progress.dart';
 import '../state.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'anim_player.dart';
 import 'cards.dart';
 import 'helper.dart';
 import 'play.dart' show formatRun;
@@ -836,6 +837,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
           ..add(Text(s.tr(st.h!), style: AppType.title1.copyWith(color: c.text)))
           ..add(Text(s.tr(st.p!), style: AppType.body.copyWith(color: c.text, fontSize: 17)));
         if (st.code != null) body.add(CodeBlock(st.code!, label: label));
+        if (st.anim != null) body.add(AnimPlayer(key: ValueKey('anim-$i'), scene: st.anim!));
 
       case StepType.quiz:
         body.add(Text(s.tr(st.q!), style: AppType.title2.copyWith(color: c.text)));

@@ -322,6 +322,8 @@ const Map<String, Map<String, Object>> kStrings = {
     'project_check': 'Tekshirish va havola olish',
     'project_my_link': 'Mening havolam',
     'project_hint': 'kod avtomatik saqlanadi',
+    'anim_play': 'Avtomatik ko‘rsatish',
+    'anim_memory': 'Xotira (o‘zgaruvchilar)',
   },
   'ru': {
     'home': 'Главная',
@@ -644,5 +646,7 @@ const Map<String, Map<String, Object>> kStrings = {
     'project_check': 'Проверить и получить ссылку',
     'project_my_link': 'Моя ссылка',
     'project_hint': 'код сохраняется автоматически',
+    'anim_play': 'Показать автоматически',
+    'anim_memory': 'Память (переменные)',
   },
 };

@@ -13,6 +13,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:kodla/api.dart';
 import 'package:kodla/main.dart';
+import 'package:kodla/screens/lesson.dart' show openLesson;
 import 'package:kodla/state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -204,6 +205,24 @@ void main() {
     await settle(t, 1500);
     await shot(t, '${n++}-lesson-done');
     await tapKey(t, const ValueKey('lesson-back'));
+
+    // Animatsiyalar / анимации
+    for (final id in ['html3', 'css4', 'css6', 'js4', 'py5', 'py6', 'ai2', 'ai3', 'aiA2']) {
+      openLesson(state.navigatorKey.currentContext!, id);
+      await settle(t, 900);
+      await tapKey(t, const ValueKey('test-start'));
+      for (var g = 0; g < 6 && !has(const ValueKey('anim-player')); g++) {
+        await tapKey(t, const ValueKey('step-next'));
+      }
+      for (var k = 0; k < 3; k++) {
+        if (has(const ValueKey('anim-next'))) await tapKey(t, const ValueKey('anim-next'));
+      }
+      await settle(t, 1200);
+      await shot(t, '${n++}-anim-$id');
+      await tapKey(t, const ValueKey('lesson-close'));
+      await tapKey(t, const ValueKey('quit-yes'));
+      await settle(t, 1500);
+    }
 
     state.go('shop');
     await settle(t, 1200);
