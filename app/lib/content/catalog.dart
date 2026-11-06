@@ -73,12 +73,16 @@ final List<Course> kCourses = [
     _l('ai3', 'ai', const Tr('Aqlli so‘rov', 'Умный запрос'), ai3, leagues: kBeginner),
     _l('ai4', 'ai', const Tr('AI xatolari', 'Ошибки AI'), ai4, leagues: kBeginner),
     _l('ai5', 'ai', const Tr('Soxta va xavfsizlik', 'Фейки и безопасность'), ai5, leagues: kBeginner),
+    _l('ai6', 'ai', const Tr('AI qanday ko‘radi', 'Как AI видит'), ai6, leagues: kBeginner),
+    _l('ai7', 'ai', const Tr('Halol va xavfsiz AI', 'Честный и безопасный AI'), ai7, leagues: kBeginner),
     _l('aiA1', 'ai', const Tr('Chatbot', 'Чат-бот'), aiA1, xp: kProjectXp, leagues: kAdvanced),
     _l('aiA2', 'ai', const Tr('Raqamni tanish', 'Распознавание цифр'), aiA2, xp: kProjectXp, leagues: kAdvanced),
     _l('aiA3', 'ai', const Tr('Savol generatori', 'Генератор вопросов'), aiA3, xp: kProjectXp, leagues: kAdvanced),
+    _l('aiA4', 'ai', const Tr('Matn kayfiyati', 'Настроение текста'), aiA4, xp: kProjectXp, leagues: kAdvanced),
     _l('aiM1', 'ai', const Tr('Niyatli chatbot', 'Чат-бот с намерениями'), aiM1, xp: kProjectXp, leagues: kMaster),
     _l('aiM2', 'ai', const Tr('k-NN tanish', 'Распознавание k-NN'), aiM2, xp: kProjectXp, leagues: kMaster),
     _l('aiM3', 'ai', const Tr('Moslashuvchan test', 'Адаптивный тест'), aiM3, xp: kProjectXp, leagues: kMaster),
+    _l('aiM4', 'ai', const Tr('Sun’iy neyron', 'Искусственный нейрон'), aiM4, xp: kProjectXp, leagues: kMaster),
   ]),
 ];
 

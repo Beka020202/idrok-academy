@@ -412,3 +412,145 @@ List<LessonStep> aiM3(Gen g) {
     ),
   ];
 }
+
+// ============================================================ QO‘SHIMCHA DARSLAR / ДОПОЛНИТЕЛЬНЫЕ УРОКИ
+List<LessonStep> ai6(Gen g) {
+  final n = g.pick(const [3, 4, 5]);
+  return [
+    const LessonStep.read(
+      h: Tr('AI rasmni qanday “ko‘radi”?', 'Как AI «видит» картинку?'),
+      p: Tr(
+          'Kompyuter uchun rasm — raqamlar jadvali. Har bir kichik nuqta (piksel) bitta son: 0 — oq, 1 — qora. '
+              'Rangli rasmda har pikselda 3 ta son bor: qizil, yashil, ko‘k. AI millionlab shunday jadvallarni ko‘rib, '
+              '“ko‘z”, “quloq”, “g‘ildirak” kabi naqshlarni topishni o‘rganadi.',
+          'Для компьютера картинка — таблица чисел. Каждая маленькая точка (пиксель) — одно число: 0 — белый, 1 — чёрный. '
+              'В цветной картинке у каждого пикселя 3 числа: красный, зелёный, синий. AI смотрит миллионы таких таблиц '
+              'и учится находить узоры вроде «глаз», «ухо», «колесо».'),
+    ),
+    ...g.from([
+      Q(1, (g) => g.quiz(const Tr('Kompyuter uchun rasm nima?', 'Что такое картинка для компьютера?'), const Tr('Raqamlar jadvali (piksellar)', 'Таблица чисел (пиксели)'),
+          const [Tr('Rangli qog‘oz', 'Цветная бумага'), Tr('Bitta so‘z', 'Одно слово'), Tr('Ovoz', 'Звук')])),
+      Q(1, (g) => g.quiz(const Tr('Piksel nima?', 'Что такое пиксель?'), const Tr('Rasmning eng kichik nuqtasi', 'Самая маленькая точка картинки'),
+          const [Tr('Kamera turi', 'Вид камеры'), Tr('Fayl nomi', 'Имя файла'), Tr('Internet tezligi', 'Скорость интернета')])),
+      Q(2, (g) => g.quiz(Tr('Rasm $n×$n piksel. Unda nechta piksel bor?', 'Картинка $n×$n пикселей. Сколько в ней пикселей?'), lit('${n * n}'),
+          [lit('${n * 2}'), lit('$n'), lit('${n * n + n}')])),
+      Q(2, (g) => g.quiz(const Tr('Rangli pikselda nechta son bo‘ladi?', 'Сколько чисел в цветном пикселе?'), lit('3'),
+          [lit('1'), lit('10'), lit('100')], e: const Tr('Qizil, yashil va ko‘k (RGB).', 'Красный, зелёный и синий (RGB).'))),
+      Q(3, (g) => g.quiz(const Tr('AI faqat kunduzgi rasmlarda o‘qitildi. Kechasi olingan rasmda nima bo‘ladi?', 'AI учили только на дневных фото. Что будет с ночным фото?'),
+          const Tr('Xato qilishi mumkin — u bunday misollarni ko‘rmagan', 'Может ошибиться — таких примеров он не видел'),
+          const [Tr('Yanada yaxshi taniydi', 'Узнает ещё лучше'), Tr('Rasmni o‘zi yoritadi', 'Сам осветлит фото'), Tr('Hech narsa o‘zgarmaydi', 'Ничего не изменится')])),
+    ], 3),
+    g.order(const Tr('AI rasmni tanish bosqichlarini tartiblang:', 'Расставьте этапы распознавания картинки:'),
+        ['Rasm piksellarga bo‘linadi', 'Piksellar raqamga aylanadi', 'AI naqshlarni qidiradi', 'AI javob beradi: “bu mushuk”']),
+  ];
+}
+
+List<LessonStep> ai7(Gen g) => [
+      const LessonStep.read(
+        h: Tr('AI dan to‘g‘ri va xavfsiz foydalanish', 'Как пользоваться AI честно и безопасно'),
+        p: Tr(
+            'AI — kuchli yordamchi, lekin uchta qoida bor. 1) Shaxsiy ma’lumot bermang: parol, uy manzili, karta raqami, hujjatlar. '
+                '2) Uy vazifasini AI ga to‘liq yozdirmang — tushuntirishni so‘rang, keyin o‘zingiz yeching. '
+                '3) AI ham adolatsiz bo‘lishi mumkin: agar uni bir tomonlama misollarda o‘qitishsa, javoblari ham bir tomonlama bo‘ladi.',
+            'AI — сильный помощник, но есть три правила. 1) Не давайте личные данные: пароль, домашний адрес, номер карты, документы. '
+                '2) Не просите AI полностью сделать домашнее задание — попросите объяснить, а решите сами. '
+                '3) AI тоже бывает несправедливым: если его учили на однобоких примерах, ответы тоже будут однобокими.'),
+      ),
+      ...g.from([
+        Q(1, (g) => g.quiz(const Tr('Qaysi ma’lumotni AI ga yozish mumkin EMAS?', 'Что НЕЛЬЗЯ писать AI?'), const Tr('Parolingiz va uy manzilingiz', 'Ваш пароль и домашний адрес'),
+            const [Tr('Matematika savoli', 'Вопрос по математике'), Tr('Kitob nomi', 'Название книги'), Tr('Sevimli rangingiz', 'Любимый цвет')])),
+        Q(1, (g) => g.quiz(const Tr('Uy vazifasida AI dan qanday foydalanish to‘g‘ri?', 'Как правильно использовать AI для домашки?'),
+            const Tr('Mavzuni tushuntirishni so‘rab, keyin o‘zim yechaman', 'Прошу объяснить тему, потом решаю сам'),
+            const [Tr('Javobni ko‘chirib olaman', 'Копирую ответ'), Tr('Do‘stimga AI javobini yuboraman', 'Отправляю ответ AI другу'), Tr('Umuman o‘qimayman', 'Вообще не учусь')])),
+        Q(2, (g) => g.quiz(const Tr('AI faqat erkak shifokorlar rasmida o‘qitildi. Nima bo‘lishi mumkin?', 'AI учили только на фото врачей-мужчин. Что может случиться?'),
+            const Tr('Ayol shifokorni “shifokor” deb tanimasligi mumkin', 'Может не узнать в женщине врача'),
+            const [Tr('Hech narsa', 'Ничего'), Tr('AI tezroq ishlaydi', 'AI заработает быстрее'), Tr('Rasmlar chiroyli bo‘ladi', 'Фото станут красивее')],
+            e: const Tr('Bu “tarafkashlik” (bias): misollar bir xil bo‘lsa, AI adolatsiz xulosa qiladi.', 'Это «предвзятость» (bias): однообразные примеры — несправедливые выводы.'))),
+        Q(3, (g) => g.quiz(const Tr('Do‘stingiz AI bilan sizning soxta rasmingizni yasadi. Nima qilasiz?', 'Друг сделал с помощью AI ваше фейковое фото. Что делать?'),
+            const Tr('Ulashmayman va kattalarga aytaman', 'Не распространяю и говорю взрослым'),
+            const [Tr('Hammaga yuboraman', 'Отправлю всем'), Tr('Javob qilib uning rasmini yasayman', 'В ответ сделаю его фото'), Tr('E’tibor bermayman', 'Не обращу внимания')])),
+      ], 3),
+      g.order(const Tr('AI bilan uy vazifasini to‘g‘ri bajarish tartibi:', 'Правильный порядок работы с домашкой и AI:'),
+          ['Avval o‘zim urinib ko‘raman', 'Tushunmagan joyimni AI dan so‘rayman', 'Tushuntirishni o‘qib, o‘zim yechaman', 'Javobni darslikda tekshiraman']),
+    ];
+
+const _pos = ['zo‘r', 'yaxshi', 'ajoyib', 'yoqdi'];
+const _neg = ['yomon', 'zerikarli', 'yoqmadi', 'qiyin'];
+
+List<LessonStep> aiA4(Gen g) {
+  final p = g.sample(_pos, 2), n = g.sample(_neg, 1);
+  final review = '${p[0]} dars lekin biroz ${n[0]} edi baribir ${p[1]}';
+  final fn = 'ijobiy = ${_pos.map((x) => '"$x"').toList()}\nsalbiy = ${_neg.map((x) => '"$x"').toList()}\n\n'
+      'def kayfiyat(matn):\n    ball = 0\n    for soz in matn.lower().split():\n        if soz in ijobiy:\n            ball += 1\n        if soz in salbiy:\n            ball -= 1\n    return ball\n';
+  return [
+    const LessonStep.read(
+      h: Tr('Loyiha: matn kayfiyatini aniqlash', 'Проект: определяем настроение текста'),
+      p: Tr(
+          'Do‘konlar va ilovalar minglab sharhlarni o‘qiy olmaydi — buni AI qiladi. Eng oddiy usul: ijobiy so‘zlar uchun +1, salbiy so‘zlar uchun −1 ball. '
+              'Yig‘indi musbat bo‘lsa — sharh ijobiy, manfiy bo‘lsa — salbiy. Haqiqiy AI ham shunday boshlanadi, faqat so‘zlarning “og‘irligi”ni o‘zi o‘rganadi.',
+          'Магазины и приложения не могут прочитать тысячи отзывов — это делает AI. Самый простой способ: +1 балл за позитивные слова, −1 за негативные. '
+              'Сумма положительная — отзыв хороший, отрицательная — плохой. Настоящий AI начинается так же, только «вес» слов он учит сам.'),
+      code: 'def kayfiyat(matn):\n    ball = 0\n    for soz in matn.lower().split():\n        if soz in ijobiy:\n            ball += 1\n        if soz in salbiy:\n            ball -= 1\n    return ball',
+    ),
+    ...g.from([
+      Q(1, (g) => g.quiz(const Tr('.split() nima qiladi?', 'Что делает .split()?'), const Tr('Matnni so‘zlar ro‘yxatiga bo‘ladi', 'Делит текст на список слов'),
+          const [Tr('Matnni o‘chiradi', 'Удаляет текст'), Tr('Harflarni sanaydi', 'Считает буквы'), Tr('Matnni teskari qiladi', 'Переворачивает текст')])),
+      Q(2, (g) => g.quizCode(const Tr('Bu sharhning bali nechchi?', 'Какой балл у этого отзыва?'), '${2 - 1}', ['3', '-1', '0'],
+          code: 'kayfiyat("$review")')),
+      Q(3, (g) => g.quiz(const Tr('“yaxshi emas” sharhida bu dastur qayerda xato qiladi?', 'Где ошибётся программа на отзыве «yaxshi emas»?'),
+          const Tr('“emas” ni hisobga olmay, ijobiy deb o‘ylaydi', 'Не учтёт «emas» и посчитает отзыв хорошим'),
+          const [Tr('Xato qilmaydi', 'Не ошибётся'), Tr('Dastur to‘xtab qoladi', 'Программа зависнет'), Tr('Bal −2 bo‘ladi', 'Балл будет −2')],
+          e: const Tr('Shuning uchun haqiqiy AI so‘zlarni alohida emas, birga — kontekstda o‘rganadi.', 'Поэтому настоящий AI учит слова не по отдельности, а вместе — в контексте.'))),
+    ], 2),
+    g.tryIt(
+      mode: 'py',
+      task: Tr('kayfiyat("$review") ball 0 dan katta bo‘lsa “ijobiy”, aks holda “salbiy” deb chiqaring.',
+          'Если балл kayfiyat("$review") больше 0, выведите «ijobiy», иначе «salbiy».'),
+      start: '$fn\n# shu yerga yozing\n',
+      hint: lit('if kayfiyat("$review") > 0:\n    print("ijobiy")\nelse:\n    print("salbiy")'),
+      check: (c, o) => o.trim() == 'ijobiy',
+      solution: '$fn\nif kayfiyat("$review") > 0:\n    print("ijobiy")\nelse:\n    print("salbiy")\n',
+    ),
+  ];
+}
+
+List<LessonStep> aiM4(Gen g) {
+  final w1 = g.pick(const [2, 3]), w2 = g.pick(const [1, 2]), b = -g.pick(const [4, 5]);
+  final x1 = g.n(1, 2), x2 = g.n(0, 2);
+  final s = w1 * x1 + w2 * x2 + b;
+  final fn = 'def neyron(x1, x2):\n    s = $w1 * x1 + $w2 * x2 + ($b)\n    return 1 if s > 0 else 0\n';
+  return [
+    const LessonStep.read(
+      h: Tr('Loyiha: eng kichik neyron (perseptron)', 'Проект: самый маленький нейрон (перцептрон)'),
+      p: Tr(
+          'Neyron tarmoqlar (ChatGPT ham) millionlab oddiy “neyronlardan” iborat. Bitta neyron: har bir kirishni o‘z og‘irligiga (weight) ko‘paytiradi, '
+              'qo‘shadi, siljish (bias) qo‘shadi va natija 0 dan katta bo‘lsa 1, aks holda 0 beradi. O‘qitish — og‘irliklarni to‘g‘ri tanlash demak.',
+          'Нейросети (и ChatGPT тоже) состоят из миллионов простых «нейронов». Один нейрон умножает каждый вход на свой вес (weight), '
+              'складывает, добавляет смещение (bias) и выдаёт 1, если результат больше 0, иначе 0. Обучение — это подбор правильных весов.'),
+      code: 'def neyron(x1, x2):\n    s = w1 * x1 + w2 * x2 + b\n    return 1 if s > 0 else 0',
+    ),
+    ...g.from([
+      Q(1, (g) => g.quiz(const Tr('Og‘irlik (weight) nimani bildiradi?', 'Что означает вес (weight)?'), const Tr('Kirish qanchalik muhimligini', 'Насколько важен вход'),
+          const [Tr('Kompyuter og‘irligini', 'Вес компьютера'), Tr('Fayl hajmini', 'Размер файла'), Tr('Neyron rangini', 'Цвет нейрона')])),
+      Q(2, (g) => g.quizCode(_qOut, '${s > 0 ? 1 : 0}', ['${s > 0 ? 0 : 1}', '$s', '${w1 + w2}'],
+          code: '${fn}print(neyron($x1, $x2))')),
+      Q(3, (g) => g.quiz(const Tr('Neyron xato javob berdi. O‘qitishda nima o‘zgaradi?', 'Нейрон ответил неверно. Что меняется при обучении?'),
+          const Tr('Og‘irliklar va bias biroz to‘g‘rilanadi', 'Веса и bias немного исправляются'),
+          const [Tr('Kirishlar o‘chiriladi', 'Входы удаляются'), Tr('Hech narsa', 'Ничего'), Tr('Kod qayta yoziladi', 'Код переписывается')])),
+    ], 2),
+    g.tryIt(
+      mode: 'py',
+      task: const Tr('Neyronni (1,1), (0,0) va (2,2) uchun chaqirib, har birining natijasini alohida qatorda chiqaring.',
+          'Вызовите нейрон для (1,1), (0,0) и (2,2) и выведите каждый результат на отдельной строке.'),
+      start: '$fn\n# shu yerga yozing\n',
+      hint: lit('print(neyron(1, 1))\nprint(neyron(0, 0))\nprint(neyron(2, 2))'),
+      check: (c, o) {
+        int f(int a, int c2) => (w1 * a + w2 * c2 + b) > 0 ? 1 : 0;
+        return o.trim().split(RegExp(r'\s+')).join(' ') == '${f(1, 1)} ${f(0, 0)} ${f(2, 2)}';
+      },
+      solution: '${fn}print(neyron(1, 1))\nprint(neyron(0, 0))\nprint(neyron(2, 2))\n',
+    ),
+  ];
+}
+
+const _qOut = Tr('Bu kod nima chiqaradi?', 'Что выведет этот код?');

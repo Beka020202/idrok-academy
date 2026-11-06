@@ -154,6 +154,20 @@
    "beginner"
   ]
  },
+ "ai6": {
+  "course": "ai",
+  "xp": 20,
+  "leagues": [
+   "beginner"
+  ]
+ },
+ "ai7": {
+  "course": "ai",
+  "xp": 20,
+  "leagues": [
+   "beginner"
+  ]
+ },
  "aiA1": {
   "course": "ai",
   "xp": 30,
@@ -175,6 +189,13 @@
    "advanced"
   ]
  },
+ "aiA4": {
+  "course": "ai",
+  "xp": 30,
+  "leagues": [
+   "advanced"
+  ]
+ },
  "aiM1": {
   "course": "ai",
   "xp": 30,
@@ -190,6 +211,13 @@
   ]
  },
  "aiM3": {
+  "course": "ai",
+  "xp": 30,
+  "leagues": [
+   "master"
+  ]
+ },
+ "aiM4": {
   "course": "ai",
   "xp": 30,
   "leagues": [

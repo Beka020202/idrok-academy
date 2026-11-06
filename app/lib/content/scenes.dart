@@ -207,4 +207,38 @@ final Map<String, SceneDef> kScenes = {
           ..step(3, const Tr('Daraja doim 1 va 3 orasida qoladi.', 'Уровень всегда остаётся между 1 и 3.'));
         return t.scene();
       }),
+  'ai6': (const Tr('Rasm — raqamlar jadvali', 'Картинка — таблица чисел'), _watch, (g) => gridScene(g)),
+  'ai7': (const Tr('Nimani yozish mumkin emas', 'Что нельзя писать'), _watch, (g) => chatScene(
+        const Tr('Kimdir “AI yordamchi” deb yozdi…', 'Кто-то написал как «AI-помощник»…'), const [
+          (false, Tr('Salom! Sizga yordam berishim uchun parolingiz va uy manzilingizni yozing.', 'Привет! Чтобы я помог, напишите пароль и домашний адрес.')),
+          (true, Tr('Nega senga parolim kerak?', 'Зачем тебе мой пароль?')),
+          (false, Tr('Shunchaki tekshirish uchun 🙂', 'Просто для проверки 🙂')),
+          (true, Tr('Yo‘q. Haqiqiy yordamchi parol so‘ramaydi. Men kattalarga aytaman.', 'Нет. Настоящий помощник пароль не просит. Я скажу взрослым.')),
+        ], const [
+          Tr('⚠ Shaxsiy ma’lumot so‘ralmoqda.', '⚠ Просят личные данные.'),
+          Tr('To‘g‘ri savol: nega kerak?', 'Правильный вопрос: зачем?'),
+          Tr('Asossiz javob — xavf belgisi.', 'Необоснованный ответ — признак опасности.'),
+          Tr('Parol, manzil, karta — hech qachon hech kimga!', 'Пароль, адрес, карта — никогда и никому!'),
+        ])),
+  'aiA4': (const Tr('Sharh balini hisoblaymiz', 'Считаем балл отзыва'), _watch, (g) {
+        final t = Tracer('py', ['ball = 0', 'for soz in matn.split():', '    if soz in ijobiy: ball += 1', '    if soz in salbiy: ball -= 1', 'print(ball)'])
+          ..step(0, const Tr('Matn: “zo‘r dars lekin qiyin”. Ball 0 dan boshlanadi.', 'Текст: «zo‘r dars lekin qiyin». Балл начинается с 0.'), set: 'ball', val: 0)
+          ..step(1, const Tr('1-so‘z: “zo‘r”', 'Слово 1: «zo‘r»'), set: 'soz', val: '"zo‘r"')
+          ..step(2, const Tr('Ijobiy so‘z → +1', 'Позитивное слово → +1'), set: 'ball', val: 1)
+          ..step(1, const Tr('“dars”, “lekin” — neytral, ball o‘zgarmaydi.', '«dars», «lekin» — нейтральные, балл не меняется.'), set: 'soz', val: '"lekin"')
+          ..step(1, const Tr('Oxirgi so‘z: “qiyin”', 'Последнее слово: «qiyin»'), set: 'soz', val: '"qiyin"')
+          ..step(3, const Tr('Salbiy so‘z → −1', 'Негативное слово → −1'), set: 'ball', val: 0)
+          ..step(4, const Tr('Ball 0 — sharh neytral.', 'Балл 0 — отзыв нейтральный.'), print: 0);
+        return t.scene();
+      }),
+  'aiM4': (const Tr('Neyron ichida', 'Внутри нейрона'), _watch, (g) {
+        final t = Tracer('py', ['x1, x2 = 1, 2', 'w1, w2, b = 3, 1, -4', 's = w1*x1 + w2*x2 + b', 'natija = 1 if s > 0 else 0', 'print(natija)'])
+          ..step(0, const Tr('Ikki kirish: masalan, “quloq uzunligi” va “o‘lcham”.', 'Два входа: например, «длина ушей» и «размер».'), set: 'x1', val: 1)
+          ..step(0, const Tr('x2 = 2', 'x2 = 2'), set: 'x2', val: 2)
+          ..step(1, const Tr('Og‘irliklar: x1 muhimroq (3), x2 kamroq (1). bias = −4.', 'Веса: x1 важнее (3), x2 меньше (1). bias = −4.'), set: 'w1', val: 3)
+          ..step(2, const Tr('Yig‘indi: 3·1 + 1·2 − 4 = 1', 'Сумма: 3·1 + 1·2 − 4 = 1'), set: 's', val: 1)
+          ..step(3, const Tr('1 > 0 → neyron “yonadi”: natija 1.', '1 > 0 → нейрон «загорается»: результат 1.'), set: 'natija', val: 1)
+          ..step(4, const Tr('Millionlab shunday neyron birga — bu neyron tarmoq!', 'Миллионы таких нейронов вместе — это нейросеть!'), print: 1);
+        return t.scene();
+      }),
 };
