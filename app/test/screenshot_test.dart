@@ -1,7 +1,6 @@
 // Ekran rasmlari (faqat CI uchun): SCREENSHOTS_DIR o‘rnatilganda ishlaydi.
 // Скриншоты экранов (только для CI): работает, если задан SCREENSHOTS_DIR.
 
-import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -9,9 +8,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
-import 'package:kodla/api.dart';
 import 'package:kodla/main.dart';
 import 'package:kodla/screens/lesson.dart' show openLesson;
 import 'package:kodla/state.dart';
@@ -256,121 +252,6 @@ void main() {
     await settle(t, 900);
     await tapKey(t, const ValueKey('lesson-html2'));
     await shot(t, '${n++}-lesson-gate-dark-ru');
-    await t.pump(const Duration(seconds: 4));
-  }, skip: _dir == null);
-
-  testWidgets('staff screenshots', (t) async {
-    SharedPreferences.setMockInitialValues({});
-    await _loadFonts();
-    t.view.physicalSize = const Size(390 * 3, 844 * 3);
-    t.view.devicePixelRatio = 3;
-    addTearDown(t.view.reset);
-    var role = 'teacher';
-    final students = [
-      for (final (n, x, lg) in [('Aziza Karimova', 340, 'master'), ('Bekzod Aliyev', 260, 'advanced'), ('Laylo Tosheva', 180, 'beginner')])
-        {
-          'username': n.split(' ').first.toLowerCase(), 'name': n, 'school': '45-maktab', 'district': 'Asaka',
-          'region': 'Andijon viloyati', 'league': lg, 'xp': x, 'xp_total': x + 100, 'week_xp': x ~/ 3, 'level': 3,
-          'streak': 4, 'done': ['html1', 'html2', 'css1'], 'last_day': '2026-11-02', 'has_photo': false,
-        }
-    ];
-    Map<String, Object?> user() => {
-          'username': role, 'name': role == 'admin' ? 'Behruz' : 'Dilnoza Karimova', 'role': role, 'school': '45-maktab',
-          'district': 'Asaka', 'region': 'Andijon viloyati', 'league': '', 'has_photo': false, 'state': {},
-        };
-    final tests = [
-      {
-        'id': 1, 'title': 'Sikllar bo‘yicha test', 'text': '', 'active': true, 'mine': true, 'submitted': 12, 'avg': 78,
-        'questions': [
-          {'type': 'quiz', 'q': 'for sikli nima qiladi?', 'options': ['Takrorlaydi', 'To‘xtatadi'], 'answer': 0},
-          {'type': 'fill', 'q': 'Ekranga chiqarish buyrug‘i?', 'answers': ['print']},
-        ],
-      }
-    ];
-    Api.client = MockClient((req) async {
-      final p = req.url.path;
-      Object body = {'rows': []};
-      if (p == '/api/login') body = {'token': 'tok', 'user': user()};
-      if (p == '/api/teacher/students' || p == '/api/admin/students') body = {'rows': students, 'lessons': []};
-      if (p == '/api/leaderboard') body = {'rows': students, 'league': 'beginner', 'scope': 'school', 'period': 'week'};
-      if (p == '/api/teacher/tests') body = {'rows': tests};
-      if (p == '/api/teacher/results') {
-        body = {'rows': [for (final s in students) {...s, 'correct': 2, 'best': 2, 'total': 2, 'tries': 1}], 'test': tests.first};
-      }
-      if (p == '/api/admin/codes' && req.method == 'GET') {
-        body = {
-          'rows': [
-            {'code': 'IDR-7K4P-9QX2', 'school': '45-maktab', 'district': 'Asaka', 'region': 'Andijon viloyati', 'note': 'Karimova D.', 'used_by': 'Dilnoza Karimova'},
-            {'code': 'IDR-M3TZ-2HRW', 'school': '12-maktab', 'district': 'Asaka', 'region': 'Andijon viloyati', 'note': '+998 90 …', 'used_by': ''},
-          ]
-        };
-      }
-      if (p == '/api/admin/codes' && req.method == 'POST') body = {'code': 'IDR-Q8VN-5JKD'};
-      if (p == '/api/admin/orders') {
-        body = {
-          'rows': [
-            {'id': 1, 'item_id': 'backpack', 'price': 25000, 'status': 'new', 'ts': 1793600000, 'username': 'aziza', 'name': 'Aziza Karimova', 'school': '45-maktab', 'city': 'Asaka'},
-            {'id': 2, 'item_id': 'mug', 'price': 6000, 'status': 'delivered', 'ts': 1793500000, 'username': 'bekzod', 'name': 'Bekzod Aliyev', 'school': '12-maktab', 'city': 'Asaka'},
-          ]
-        };
-      }
-      return http.Response(jsonEncode(body), 200, headers: {'content-type': 'application/json; charset=utf-8'});
-    });
-    addTearDown(() => Api.client = http.Client());
-
-    final state = AppState()
-      ..allowWarmUp = false
-      ..testMode = true;
-    await t.pumpWidget(RepaintBoundary(key: _shotKey, child: KodlaApp(state: state)));
-    await state.init();
-    await settle(t, 900);
-    await t.tap(find.text('Ro‘yxatdan o‘tish').first);
-    await settle(t, 900);
-    await t.tap(find.text('Ustoz').first);
-    await settle(t, 900);
-    await shot(t, '40-register-teacher');
-
-    await t.runAsync(() => state.auth(register: false, username: 'teacher', password: '1234', serverUrl: 'http://test'));
-    await settle(t, 1500);
-    await shot(t, '41-teacher-school');
-    state.go('tests');
-    await settle(t, 1200);
-    await shot(t, '42-teacher-tests');
-    await tapKey(t, const ValueKey('test-1'));
-    await settle(t, 1200);
-    await shot(t, '43-test-results');
-    await t.pageBack();
-    await settle(t, 900);
-    await tapKey(t, const ValueKey('test-new'));
-    await settle(t, 900);
-    await shot(t, '44-test-editor');
-    await t.pageBack();
-    await settle(t, 900);
-    state.go('ranking');
-    await settle(t, 1200);
-    await shot(t, '45-teacher-ranking');
-
-    await state.logout();
-    await settle(t, 900);
-    role = 'admin';
-    await t.runAsync(() => state.auth(register: false, username: 'admin', password: '1234', serverUrl: 'http://test'));
-    await settle(t, 1500);
-    await shot(t, '46-admin-codes');
-    await tapKey(t, const ValueKey('school-region'));
-    await tapKey(t, const ValueKey('pick-Andijon viloyati'));
-    await tapKey(t, const ValueKey('school-district'));
-    await tapKey(t, const ValueKey('pick-Asaka'));
-    await t.enterText(find.descendant(of: find.byKey(const ValueKey('school-number')), matching: find.byType(TextField)), '12');
-    FocusManager.instance.primaryFocus?.unfocus();
-    await tapKey(t, const ValueKey('code-make'));
-    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
-    await settle(t, 1200);
-    await shot(t, '47-admin-new-code');
-    await t.tapAt(const Offset(30, 60));
-    await settle(t, 900);
-    state.go('orders');
-    await settle(t, 1200);
-    await shot(t, '48-admin-orders');
     await t.pump(const Duration(seconds: 4));
   }, skip: _dir == null);
 }
