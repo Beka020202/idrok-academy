@@ -5,9 +5,9 @@ import '../progress.dart';
 import '../state.dart';
 import '../theme.dart';
 import '../widgets.dart';
-import 'cards.dart' show CardsTile;
+import 'cards.dart' show CardsScreen;
 import 'profile_form.dart';
-import 'reminder.dart' show ReminderTile;
+import 'reminder.dart' show ReminderScreen;
 
 /// Profil / Профиль.
 class ProfileTab extends StatefulWidget {
@@ -47,199 +47,147 @@ class _ProfileTabState extends State<ProfileTab> {
     await showAppSheet<void>(context, builder: (_) => const _EditSheet());
   }
 
+  Future<void> _pickTheme() async {
+    final s = AppScope.read(context);
+    await showAppSheet<void>(context, builder: (ctx) {
+      final c = AppScope.of(ctx).c;
+      return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text(s.t('appearance'), textAlign: TextAlign.center, style: AppType.title3.copyWith(color: c.text)),
+        const SizedBox(height: S.x4),
+        Segmented<String>(
+          values: const ['system', 'light', 'dark'],
+          labels: [s.t('system'), s.t('light'), s.t('dark')],
+          icons: const [Icons.brightness_auto_rounded, Icons.light_mode_rounded, Icons.dark_mode_rounded],
+          value: AppScope.of(ctx).theme,
+          onChanged: s.setTheme,
+        ),
+      ]);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
     final c = s.c, st = s.st;
     final place = [s.school, s.city].where((x) => x.trim().isNotEmpty).join(' · ');
+    void push(Widget w) => Navigator.of(context).push(AppRoute<void>(builder: (_) => w));
 
-    // ---- Profil kartasi / карточка профиля
-    final head = AppCard(
-      padding: const EdgeInsets.all(S.x5),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Row(children: [
-          PhotoPicker(
-            bytes: s.myPhoto,
-            url: s.myPhoto == null && s.online ? s.photoUrl(s.username) : null,
-            name: s.displayName,
-            size: 84,
-            onPicked: (b) async {
-              final ok = await s.updatePhoto(b);
-              if (ok) s.toast(s.t('photo_saved'), icon: Icons.check_circle_rounded);
-            },
-          ),
-          const SizedBox(width: S.x4),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(s.displayName.isEmpty ? s.t('profile') : s.displayName,
-                  maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.title2.copyWith(color: c.text)),
-              if (place.isNotEmpty) ...[
-                const SizedBox(height: 2),
-                Text(place, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.footnote.copyWith(color: c.text2)),
-              ],
-              const SizedBox(height: S.x2),
-              Wrap(spacing: S.x2, runSpacing: S.x2, children: [
-                s.online
-                    ? AppPill(s.t('online'), icon: Icons.cloud_done_rounded, tone: Tone.yellow, small: true)
-                    : AppPill(s.t('offline_mode'), icon: Icons.cloud_off_rounded, small: true),
-                if (s.online) AppPill('@${s.username}', small: true),
-              ]),
-            ]),
-          ),
-        ]),
-        const SizedBox(height: S.x4),
-        AppButton(s.t('edit_profile'),
-            key: const ValueKey('edit-profile'), kind: BtnKind.secondary, icon: Icons.edit_rounded, expand: true, onPressed: _edit),
-      ]),
-    );
+    final head = Column(children: [
+      PhotoPicker(
+        bytes: s.myPhoto,
+        url: s.myPhoto == null && s.online ? s.photoUrl(s.username) : null,
+        name: s.displayName,
+        size: 92,
+        onPicked: (b) async {
+          final ok = await s.updatePhoto(b);
+          if (ok) s.toast(s.t('photo_saved'), icon: Icons.check_circle_rounded);
+        },
+      ),
+      const SizedBox(height: S.x3),
+      Text(s.displayName.isEmpty ? s.t('profile') : s.displayName,
+          textAlign: TextAlign.center, style: AppType.title2.copyWith(color: c.text)),
+      if (place.isNotEmpty) ...[
+        const SizedBox(height: 2),
+        Text(place, textAlign: TextAlign.center, style: AppType.subhead.copyWith(color: c.text2)),
+      ],
+      const SizedBox(height: S.x2),
+      TextButton(
+        key: const ValueKey('edit-profile'),
+        onPressed: _edit,
+        child: Text(s.t('edit_profile'), style: AppType.callout.copyWith(color: c.accentText, fontWeight: w6)),
+      ),
+    ]);
 
-    // ---- Liga / лига
-    final league = s.isStaff
-        ? null
-        : AppCard(
-            padding: const EdgeInsets.all(S.x4),
-            child: Row(children: [
-              LeagueBadge(league: st.league, size: 52),
-              const SizedBox(width: S.x3),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(s.leagueName, style: AppType.headline.copyWith(color: c.text)),
-                  const SizedBox(height: 2),
-                  Text(s.t(st.league == 'master' ? 'league_top' : 'league_hint'),
-                      style: AppType.caption.copyWith(color: c.text2)),
-                ]),
-              ),
-            ]),
-          );
-
-    // ---- Statistika / статистика
-    final acc = (st.stats.accuracy * 100).round();
-    final stats = gridOf([
-      StatTile(icon: Icons.workspace_premium_rounded, value: '${levelOf(st.xpTotal)}', label: s.t('level')),
-      StatTile(icon: Icons.bolt_rounded, value: '${st.xp}', label: s.t('balance')),
-      StatTile(icon: Icons.stacked_line_chart_rounded, value: '${st.xpTotal}', label: s.t('total_xp')),
-      StatTile(icon: Icons.local_fire_department_rounded, value: '${st.streak}', label: s.t('streak')),
-      StatTile(icon: Icons.menu_book_rounded, value: '${st.done.length}', label: s.t('lessons')),
-      StatTile(icon: Icons.track_changes_rounded, value: '$acc%', label: s.t('accuracy')),
-    ], 3, gap: S.x3);
-
-    // ---- Yutuqlar / достижения
-    final badges = [
-      (Icons.rocket_launch_rounded, s.t('b1'), st.done.isNotEmpty),
-      (Icons.bolt_rounded, s.t('b2'), st.xpTotal >= 100),
-      (Icons.local_fire_department_rounded, s.t('b3'), st.streak >= 3),
-      (Icons.verified_rounded, s.t('perfect'), st.perfect >= 1),
-      (Icons.emoji_events_rounded, s.t('b4'),
-          kCourses.any((x) => s.lessonsOf(x).isNotEmpty && s.progressOf(x) == s.lessonsOf(x).length)),
-      (Icons.military_tech_rounded, s.t('b5'), st.league == 'advanced' || st.league == 'master'),
-      (Icons.workspace_premium_rounded, s.t('portfolio'), s.projectLinks.isNotEmpty),
-    ];
-    final badgeGrid = AppCard(
-      padding: const EdgeInsets.symmetric(vertical: S.x5, horizontal: S.x3),
-      child: gridOf([
-        for (final (icon, name, on) in badges)
-          Column(children: [
-            AnimatedContainer(
-              duration: Motion.of(context, Motion.base),
-              width: 54,
-              height: 54,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: on ? c.accentGradient : null,
-                color: on ? null : c.surfaceAlt,
-                boxShadow: on ? Shadows.glow(c.accent, c, strength: 0.4) : null,
-              ),
-              child: Icon(icon, size: 26, color: on ? kWhite : c.text3),
-            ),
-            const SizedBox(height: S.x2),
-            Text(name, textAlign: TextAlign.center, maxLines: 2, style: AppType.caption.copyWith(color: on ? c.text : c.text3)),
+    Widget stat(String value, String label) => Expanded(
+          child: Column(children: [
+            Text(value, style: AppType.title2.copyWith(color: c.text)),
+            const SizedBox(height: 2),
+            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.caption.copyWith(color: c.text2)),
           ]),
-      ], 3, gap: S.x4),
-    );
-
-    // ---- Do‘kon / магазин
-    final shop = s.isStaff
-        ? null
-        : AppCard(
-            key: const ValueKey('profile-shop'),
-            onTap: () => s.go('shop'),
-            padding: const EdgeInsets.all(S.x4),
-            child: Row(children: [
-              const IconTile(Icons.redeem_rounded, size: 44, vivid: true),
-              const SizedBox(width: S.x3),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(s.t('shop_title'), style: AppType.headline.copyWith(color: c.text)),
-                  Text(s.t('shop_sub'), maxLines: 2, overflow: TextOverflow.ellipsis,
-                      style: AppType.caption.copyWith(color: c.text2)),
-                ]),
-              ),
-              Icon(Icons.chevron_right_rounded, color: c.text3),
-            ]),
-          );
-
-    // ---- Sozlamalar / настройки
-    final settings = AppCard(
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Row(children: [
-          const IconTile(Icons.contrast_rounded, size: 32),
-          const SizedBox(width: S.x3),
-          Text(s.t('appearance'), style: AppType.headline.copyWith(color: c.text)),
-        ]),
-        const SizedBox(height: S.x3),
-        Segmented<String>(
-          values: const ['system', 'light', 'dark'],
-          labels: [s.t('system'), s.t('light'), s.t('dark')],
-          icons: const [Icons.brightness_auto_rounded, Icons.light_mode_rounded, Icons.dark_mode_rounded],
-          value: s.theme,
-          onChanged: s.setTheme,
-        ),
-        Divider(height: S.x8, color: c.hairline),
-        Row(children: [
-          const IconTile(Icons.translate_rounded, size: 32),
-          const SizedBox(width: S.x3),
-          Text(s.t('language'), style: AppType.headline.copyWith(color: c.text)),
-        ]),
-        const SizedBox(height: S.x3),
-        Segmented<String>(
-          values: const ['uz', 'ru'],
-          labels: const ['O‘zbekcha', 'Русский'],
-          value: s.lang,
-          onChanged: (v) {
-            if (v != s.lang) s.toggleLang();
-          },
-        ),
+        );
+    final stats = Container(
+      padding: const EdgeInsets.symmetric(vertical: S.x4),
+      decoration: BoxDecoration(color: c.surface, borderRadius: R.all(R.lg)),
+      child: Row(children: [
+        stat('${levelOf(st.xpTotal)}', s.t('level')),
+        stat('${st.xp}', 'XP'),
+        stat('${st.streak}', s.t('streak')),
+        stat('${st.done.length}', s.t('lessons')),
       ]),
     );
 
-    final Widget bottom = s.online
-        ? AppButton(s.t('logout'), onPressed: s.logout, kind: BtnKind.secondary, icon: Icons.logout_rounded, expand: true)
-        : Row(children: [
-            Expanded(child: AppButton(s.t('login_btn'), onPressed: s.logout, icon: Icons.login_rounded)),
-            const SizedBox(width: S.x3),
-            Expanded(
-              child: AppButton(s.t('reset'), onPressed: _confirmReset, kind: BtnKind.danger, icon: Icons.restart_alt_rounded),
-            ),
-          ]);
+    final reminder = s.reminderMinutes >= 0
+        ? '${(s.reminderMinutes ~/ 60).toString().padLeft(2, '0')}:${(s.reminderMinutes % 60).toString().padLeft(2, '0')}'
+        : s.t('off');
+    final learning = GroupList([
+      GroupRow(
+          icon: Icons.military_tech_rounded,
+          color: const Color(0xFF5856D6),
+          title: s.t('league'),
+          value: s.leagueName,
+          onTap: () => s.go('ranking')),
+      GroupRow(
+          key: const ValueKey('row-shop'),
+          icon: Icons.redeem_rounded,
+          color: const Color(0xFFFF9500),
+          title: s.t('shop_title'),
+          value: '${st.xp} XP',
+          onTap: () => s.go('shop')),
+      GroupRow(
+          key: const ValueKey('cards-tile'),
+          icon: Icons.bookmarks_rounded,
+          color: const Color(0xFF0A6CFF),
+          title: s.t('my_cards'),
+          value: '${s.savedCards.length}',
+          onTap: () => push(const CardsScreen())),
+      GroupRow(
+          key: const ValueKey('row-play'),
+          icon: Icons.terminal_rounded,
+          color: const Color(0xFF1C1C1E),
+          title: s.t('play'),
+          onTap: () => s.go('play')),
+      GroupRow(
+          key: const ValueKey('reminder-tile'),
+          icon: Icons.notifications_rounded,
+          color: const Color(0xFFFF3B30),
+          title: s.t('reminder_title_short'),
+          value: reminder,
+          onTap: () => push(const ReminderScreen(asSheet: true))),
+    ]);
+
+    final settings = GroupList([
+      GroupRow(
+          icon: Icons.contrast_rounded,
+          color: const Color(0xFF8E8E93),
+          title: s.t('appearance'),
+          value: s.t(s.theme),
+          onTap: _pickTheme),
+      GroupRow(
+          key: const ValueKey('row-lang'),
+          icon: Icons.translate_rounded,
+          color: const Color(0xFF34C759),
+          title: s.t('language'),
+          value: s.lang == 'uz' ? 'O‘zbekcha' : 'Русский',
+          onTap: s.toggleLang),
+    ]);
+
+    final account = GroupList([
+      if (s.online)
+        GroupRow(
+            icon: Icons.logout_rounded, color: const Color(0xFFFF3B30), title: s.t('logout'), onTap: s.logout)
+      else ...[
+        GroupRow(icon: Icons.login_rounded, color: const Color(0xFF0A6CFF), title: s.t('login_btn'), onTap: s.logout),
+        GroupRow(
+            icon: Icons.restart_alt_rounded, color: const Color(0xFFFF3B30), title: s.t('reset'), onTap: _confirmReset),
+      ],
+    ]);
 
     return TabPage(
-      title: s.t('profile'),
       children: [
         head,
-        if (league != null) league,
-        if (!s.isStaff) ...[
-          SectionHeader(s.t('stats')),
-          stats,
-          if (shop != null) shop,
-          SectionHeader(s.t('badges')),
-          badgeGrid,
-        ],
-        if (!s.isStaff) const ReminderTile(),
-        if (!s.isStaff) const CardsTile(),
-        SectionHeader(s.t('settings')),
+        if (!s.isStaff) ...[stats, learning],
         settings,
-        bottom,
+        account,
       ],
     );
   }

@@ -12,7 +12,7 @@ import 'i18n.dart';
 import 'lessons.dart';
 import 'progress.dart';
 import 'theme.dart';
-import 'widgets.dart' show AppToast;
+import 'widgets.dart' show AppRoute, AppToast, PageShell;
 
 const String _prefsKey = 'kodla.prefs';
 
@@ -181,7 +181,7 @@ class AppState extends ChangeNotifier {
       ? ['admin', 'orders', 'teacher', 'ranking', 'profile']
       : isTeacher
           ? ['teacher', 'tests', 'ranking', 'profile']
-          : ['home', 'courses', 'play', 'ranking', 'profile'];
+          : ['home', 'ranking', 'profile'];
 
   /// Yuqoridan chiquvchi bildirishnoma / всплывающее уведомление сверху.
   void toast(String text, {IconData icon = Icons.info_rounded}) {
@@ -721,9 +721,19 @@ class AppState extends ChangeNotifier {
   }
 
   // ---------------------------------------------------------------- sozlamalar / настройки
+  /// Tab bo‘lmagan sahifalar (kurslar, do‘kon, kod maydoni) ustiga ochiladi.
+  /// Страницы, которые не являются вкладками (курсы, магазин, песочница), открываются поверх.
+  Widget Function(String id)? pageBuilder;
+
   void go(String name) {
-    tab = name;
-    notifyListeners();
+    final nav = navigatorKey.currentState;
+    nav?.popUntil((r) => r.isFirst);
+    if (tabs.contains(name) || pageBuilder == null || nav == null) {
+      tab = name;
+      notifyListeners();
+      return;
+    }
+    nav.push(AppRoute<void>(builder: (_) => PageShell(child: pageBuilder!(name))));
   }
 
   void setTheme(String m) {

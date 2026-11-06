@@ -222,7 +222,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
     final tabs = s.tabs;
-    final tab = tabs.contains(s.tab) || (s.tab == 'shop' && s.isStudent) ? s.tab : tabs.first;
+    final tab = tabs.contains(s.tab) ? s.tab : tabs.first;
+    s.pageBuilder ??= (id) => switch (id) {
+          'courses' => const CoursesTab(),
+          'play' => const PlayTab(),
+          'shop' => const ShopTab(),
+          _ => const HomeTab(),
+        };
 
     final Widget body = switch (tab) {
       'courses' => const CoursesTab(),
@@ -238,11 +244,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     };
 
     final meta = <String, (IconData, String)>{
-      'home': (Icons.explore_rounded, s.t('adventure')),
+      'home': (Icons.school_rounded, s.t('learn_tab')),
       'courses': (Icons.map_rounded, s.t('courses')),
       'play': (Icons.terminal_rounded, s.t('play')),
       'ranking': (Icons.leaderboard_rounded, s.t('ranking')),
-      'profile': (Icons.person_rounded, s.t('profile')),
+      'profile': (Icons.person_rounded, s.t('me_tab')),
       'teacher': (Icons.groups_rounded, s.t(s.isAdmin ? 'students_tab' : 'my_school')),
       'tests': (Icons.assignment_rounded, s.t('tests_tab')),
       'admin': (Icons.key_rounded, s.t('codes_tab')),

@@ -29,18 +29,8 @@ class AppBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = colorsOf(context);
-    return ColoredBox(
-      color: c.bg,
-      child: Stack(children: [
-        Positioned.fill(
-          child: RepaintBoundary(
-            child: CustomPaint(painter: _GlowPainter(c.glowA, c.glowB, strong ? 1.25 : 1.0)),
-          ),
-        ),
-        child,
-      ]),
-    );
+    // Minimalizm: toza, bir xil fon / минимализм: чистый ровный фон
+    return ColoredBox(color: colorsOf(context).bg, child: child);
   }
 }
 
@@ -1628,46 +1618,166 @@ class _ToastViewState extends State<_ToastView> with SingleTickerProviderStateMi
 }
 
 // ============================================================ SAHIFA KARKASI / КАРКАС СТРАНИЦ
-/// Yuqori qator: rasm, nom, liga, olov va XP.
-/// Верхняя строка: фото, название, лига, огонь и XP.
+/// Yuqori qator: orqaga tugmasi yoki bo‘sh joy + olov va XP.
+/// Верхняя строка: кнопка «назад» или пусто + огонь и XP.
 class Header extends StatelessWidget {
-  const Header({super.key});
+  final bool back;
+  const Header({super.key, this.back = false});
 
   @override
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
     final c = s.c;
-    return Row(children: [
-      Pressable(
-        onTap: () => s.go('profile'),
-        scale: 0.92,
-        semanticLabel: s.t('profile'),
-        child: const MyAvatar(size: 42, ring: true),
-      ),
-      const SizedBox(width: S.x3),
-      Expanded(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          Text(kAppName, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.brand.copyWith(color: c.text)),
-          const SizedBox(height: 3),
-          Text(s.isAdmin ? s.t('role_admin') : s.isTeacher ? '${s.t('role_teacher')} · ${s.school}' : s.leagueName,
-              maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.caption.copyWith(color: c.text2)),
-        ]),
-      ),
-      if (s.isStaff)
-        AppPill(s.isAdmin ? s.t('role_admin') : s.t('role_teacher'),
-            icon: s.isAdmin ? Icons.admin_panel_settings_rounded : Icons.co_present_rounded, tone: Tone.accent)
-      else ...[
-        AppPill('${s.st.streak}', icon: Icons.local_fire_department_rounded, iconColor: c.accent),
-        const SizedBox(width: S.x2),
-        Pressable(
-          key: const ValueKey('xp-pill'),
-          onTap: () => s.go('shop'),
-          scale: 0.94,
-          semanticLabel: s.t('shop'),
-          child: AppPill('${s.st.xp} XP', icon: Icons.bolt_rounded, iconColor: c.yellow),
-        ),
-      ],
+    return SizedBox(
+      height: 40,
+      child: Row(children: [
+        if (back)
+          Pressable(
+            key: const ValueKey('page-back'),
+            onTap: () => Navigator.of(context).maybePop(),
+            semanticLabel: s.t('back'),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: c.accentText),
+              const SizedBox(width: 4),
+              Text(s.t('back'), style: AppType.callout.copyWith(color: c.accentText, fontWeight: w6)),
+            ]),
+          ),
+        const Spacer(),
+        if (s.isStaff)
+          AppPill(s.isAdmin ? s.t('role_admin') : s.t('role_teacher'),
+              icon: s.isAdmin ? Icons.admin_panel_settings_rounded : Icons.co_present_rounded, small: true)
+        else ...[
+          _MiniStat(icon: Icons.local_fire_department_rounded, value: '${s.st.streak}', color: const Color(0xFFFF8A00)),
+          const SizedBox(width: S.x3),
+          Pressable(
+            key: const ValueKey('xp-pill'),
+            onTap: () => s.go('shop'),
+            scale: 0.94,
+            semanticLabel: s.t('shop'),
+            child: _MiniStat(icon: Icons.bolt_rounded, value: '${s.st.xp}', color: c.accent),
+          ),
+        ],
+      ]),
+    );
+  }
+}
+
+class _MiniStat extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final Color color;
+  const _MiniStat({required this.icon, required this.value, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = colorsOf(context);
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(icon, size: 19, color: color),
+      const SizedBox(width: 3),
+      Text(value, style: AppType.callout.copyWith(color: c.text, fontWeight: w7)),
     ]);
+  }
+}
+
+/// Ustiga ochiladigan sahifa qobig‘i / оболочка открываемой поверх страницы.
+class PageShell extends StatelessWidget {
+  final Widget child;
+  const PageShell({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = colorsOf(context);
+    return GestureDetector(
+      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+      child: Scaffold(
+        backgroundColor: c.bg,
+        body: SafeArea(
+          bottom: false,
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 640), child: child),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Guruhlangan ro‘yxat (iOS sozlamalari uslubida) / сгруппированный список (как в настройках iOS).
+class GroupList extends StatelessWidget {
+  final List<Widget> rows;
+  const GroupList(this.rows, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = colorsOf(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: c.surface,
+        borderRadius: R.all(R.lg),
+        border: c.isDark ? Border.all(color: c.hairline) : null,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(children: [
+        for (var i = 0; i < rows.length; i++) ...[
+          if (i > 0) Divider(height: 1, thickness: 0.5, indent: 58, color: c.hairlineStrong),
+          rows[i],
+        ],
+      ]),
+    );
+  }
+}
+
+/// Ro‘yxat qatori / строка списка.
+class GroupRow extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String? value;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+  const GroupRow(
+      {super.key, required this.icon, required this.color, required this.title, this.value, this.trailing, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = colorsOf(context);
+    return Material(
+      color: const Color(0x00000000),
+      child: InkWell(
+        onTap: onTap == null
+            ? null
+            : () {
+                HapticFeedback.selectionClick();
+                onTap!();
+              },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: S.x4, vertical: 13),
+          child: Row(children: [
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(8)),
+              child: Icon(icon, size: 18, color: kWhite),
+            ),
+            const SizedBox(width: S.x3),
+            Expanded(
+              child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.body.copyWith(color: c.text)),
+            ),
+            if (value != null)
+              Padding(
+                padding: const EdgeInsets.only(left: S.x2),
+                child: Text(value!, style: AppType.callout.copyWith(color: c.text2)),
+              ),
+            if (trailing != null) trailing!,
+            if (onTap != null && trailing == null) ...[
+              const SizedBox(width: 4),
+              Icon(Icons.chevron_right_rounded, size: 22, color: c.text3),
+            ],
+          ]),
+        ),
+      ),
+    );
   }
 }
 
@@ -1689,9 +1799,9 @@ class TabPage extends StatelessWidget {
       physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       children: [
-        const Header(),
+        Header(back: Navigator.of(context).canPop()),
         if (title != null) ...[
-          const SizedBox(height: S.x7),
+          const SizedBox(height: S.x3),
           LargeTitle(title!, subtitle: subtitle, trailing: trailing),
         ],
         for (var i = 0; i < children.length; i++) ...[

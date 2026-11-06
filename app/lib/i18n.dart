@@ -324,6 +324,11 @@ const Map<String, Map<String, Object>> kStrings = {
     'project_hint': 'kod avtomatik saqlanadi',
     'anim_play': 'Avtomatik ko‘rsatish',
     'anim_memory': 'Xotira (o‘zgaruvchilar)',
+    'all_done': 'Hamma darslar tugadi! 🎉',
+    'league': 'Liga',
+    'learn_tab': 'O‘qish',
+    'me_tab': 'Men',
+    'off': 'O‘chiq',
   },
   'ru': {
     'home': 'Главная',
@@ -648,5 +653,10 @@ const Map<String, Map<String, Object>> kStrings = {
     'project_hint': 'код сохраняется автоматически',
     'anim_play': 'Показать автоматически',
     'anim_memory': 'Память (переменные)',
+    'all_done': 'Все уроки пройдены! 🎉',
+    'league': 'Лига',
+    'learn_tab': 'Учёба',
+    'me_tab': 'Я',
+    'off': 'Выкл.',
   },
 };

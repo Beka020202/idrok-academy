@@ -23,8 +23,17 @@ Future<void> tapKey(WidgetTester t, Key key) async {
   await settle(t);
 }
 
+late AppState gState;
+
+/// Pastki menyuda bo‘lsa bosamiz, aks holda sahifani ochamiz.
+/// Если вкладка есть в нижнем меню — нажимаем, иначе открываем страницу.
 Future<void> tapTab(WidgetTester tester, String id) async {
-  await tester.tap(find.byKey(ValueKey('nav-$id')));
+  final nav = find.byKey(ValueKey('nav-$id'));
+  if (gState.tabs.contains(id) && nav.evaluate().isNotEmpty) {
+    await tester.tap(nav);
+  } else {
+    gState.go(id);
+  }
   await settle(tester);
 }
 
@@ -97,6 +106,7 @@ void main() {
     final state = AppState()
       ..allowWarmUp = false
       ..testMode = true;
+    gState = state;
     await tester.pumpWidget(KodlaApp(state: state));
     await state.init();
     await settle(tester, 900);
@@ -146,7 +156,17 @@ void main() {
     expect(state.st.xp, 20);
     expect(find.byKey(const ValueKey('nav-home')), findsOneWidget);
 
-    // 4) Barcha tablar / все вкладки
+    // 4) Minimal bosh sahifa: 3 ta tab / минимальная главная: 3 вкладки
+    expect(state.tabs, ['home', 'ranking', 'profile']);
+    expect(find.byKey(const ValueKey('continue-card')), findsOneWidget);
+    await tapKey(tester, const ValueKey('quests-row'));
+    await tester.tapAt(const Offset(20, 20));
+    await settle(tester);
+    await tapKey(tester, const ValueKey('course-row-py'));
+    expect(state.courseId, 'py');
+    await tapKey(tester, const ValueKey('page-back'));
+
+    // Barcha sahifalar / все страницы
     for (final id in ['courses', 'play', 'ranking', 'profile', 'home']) {
       await tapTab(tester, id);
     }
@@ -182,7 +202,7 @@ void main() {
     expect(state.st.xp, 20 - 5 + 20); // isinish − yordamchi + dars / разминка − помощник + урок
     expect(state.st.xpTotal, 40);
     await tapKey(tester, const ValueKey('lesson-back'));
-    expect(find.byKey(const ValueKey('nav-home')), findsOneWidget);
+    expect(find.byKey(const ValueKey('lesson-html2')), findsOneWidget);
 
     // 6) Ilovadan chiqish testni bekor qiladi / выход из приложения отменяет тест
     await tapKey(tester, const ValueKey('lesson-html2'));
