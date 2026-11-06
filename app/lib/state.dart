@@ -90,6 +90,12 @@ class AppState extends ChangeNotifier {
   Map<String, String> projects = {};
   Map<String, String> projectLinks = {};
 
+  /// Sertifikatlar (kurs → sertifikat) va oxirgi imtihon urinishi (kurs → ms).
+  /// Сертификаты (курс → сертификат) и последняя попытка экзамена (курс → мс).
+  Map<String, Cert> certs = {};
+  Map<String, int> examLast = {};
+  int _skew = 0; // server vaqti − telefon vaqti / время сервера − время телефона
+
   /// O‘z rasmim (kesh) / моё фото (кэш)
   Uint8List? myPhoto;
 
@@ -206,6 +212,7 @@ class AppState extends ChangeNotifier {
       try {
         final res = await api.call('/api/me');
         _setUser(res['user']);
+        loadExams();
       } on ApiError catch (e) {
         user = null;
         if (e.code == 'auth') {
@@ -258,6 +265,18 @@ class AppState extends ChangeNotifier {
     Map<String, String> strMap(Object? v) => v is Map ? {for (final e in v.entries) '${e.key}': '${e.value}'} : {};
     projects = strMap(j['projects']);
     projectLinks = strMap(j['project_links']);
+    certs = {};
+    if (j['certs'] is List) {
+      for (final x in j['certs'] as List) {
+        if (x is Map) {
+          final ce = Cert.fromJson(Map<String, dynamic>.from(x));
+          if (ce.course.isNotEmpty) certs[ce.course] = ce;
+        }
+      }
+    }
+    examLast = j['exam_last'] is Map
+        ? {for (final e in (j['exam_last'] as Map).entries) if (e.value is int) '${e.key}': e.value as int}
+        : {};
     final ph = s('photo', '');
     if (ph.isNotEmpty) {
       try {
@@ -287,6 +306,8 @@ class AppState extends ChangeNotifier {
       'cards': savedCards,
       'projects': projects,
       'project_links': projectLinks,
+      'certs': [for (final ce in certs.values) ce.toJson()],
+      'exam_last': examLast,
       'photo': myPhoto == null ? '' : base64Encode(myPhoto!),
     };
     try {
@@ -356,7 +377,10 @@ class AppState extends ChangeNotifier {
       tab = 'home';
       _setUser(res['user']);
       if (tabs.isNotEmpty) tab = tabs.first;
+      certs = {};
+      examLast = {};
       await savePrefs();
+      loadExams();
       return null;
     } on ApiError catch (e) {
       return t(switch (e.code) {
@@ -381,6 +405,8 @@ class AppState extends ChangeNotifier {
     bootError = '';
     st = normalize(offlineState);
     tab = 'home';
+    certs = {};
+    examLast = {};
     await savePrefs();
     notifyListeners();
   }
@@ -673,6 +699,118 @@ class AppState extends ChangeNotifier {
     await savePrefs();
     notifyListeners();
   }
+
+  // ---------------------------------------------------------------- imtihon va sertifikat / экзамен и сертификат
+  bool courseComplete(Course co) {
+    final ls = lessonsOf(co);
+    return ls.isNotEmpty && ls.every((l) => st.isDone(l.id));
+  }
+
+  DateTime get now => DateTime.now().add(Duration(milliseconds: _skew));
+
+  /// Qayta topshirishgacha qolgan vaqt / сколько ждать до пересдачи.
+  Duration examWait(Course co) {
+    if (certs.containsKey(co.id)) return Duration.zero;
+    final last = examLast[co.id];
+    if (last == null) return Duration.zero;
+    final d = DateTime.fromMillisecondsSinceEpoch(last).add(kExamWait).difference(now);
+    return d.isNegative ? Duration.zero : d;
+  }
+
+  void _applyExam(Object? e) {
+    if (e is! Map) return;
+    final course = '${e['course'] ?? ''}';
+    final last = (e['last'] as num?)?.toInt() ?? 0;
+    if (course.isNotEmpty && last > 0) examLast[course] = last;
+  }
+
+  void _applyCert(Object? c) {
+    if (c is! Map) return;
+    final ce = Cert.fromJson(Map<String, dynamic>.from(c));
+    if (ce.course.isNotEmpty && ce.id.isNotEmpty) certs[ce.course] = ce;
+  }
+
+  /// Serverdan imtihonlar va sertifikatlar / экзамены и сертификаты с сервера.
+  Future<void> loadExams() async {
+    if (!online || isStaff) return;
+    try {
+      final res = await api.call('/api/exams');
+      final srvNow = (res['now'] as num?)?.toInt();
+      if (srvNow != null) _skew = srvNow - DateTime.now().millisecondsSinceEpoch;
+      examLast = {};
+      for (final e in (res['exams'] as List? ?? const [])) {
+        _applyExam(e);
+      }
+      certs = {};
+      for (final c in (res['certs'] as List? ?? const [])) {
+        _applyCert(c);
+      }
+      await savePrefs();
+      notifyListeners();
+    } on ApiError {
+      // keyinroq / позже
+    }
+  }
+
+  /// Imtihonni boshlash (urinish hisoblanadi). null — mumkin, aks holda xato kaliti.
+  /// Начать экзамен (считается попыткой). null — можно, иначе ключ ошибки.
+  Future<String?> startExam(Course co) async {
+    if (!courseComplete(co)) return 'exam_locked';
+    if (certs.containsKey(co.id)) return 'exam_passed';
+    if (examWait(co) > Duration.zero) return 'exam_wait';
+    if (online) {
+      try {
+        final res = await api.call('/api/exam/start', {'course': co.id});
+        _applyExam(res['exam']);
+      } on ApiError catch (e) {
+        if (e.code == 'wait' || e.code == 'passed') await loadExams();
+        return switch (e.code) {
+          'conn' || 'busy' => 'err_conn',
+          'wait' => 'exam_wait',
+          'passed' => 'exam_passed',
+          'locked' => 'exam_locked',
+          _ => 'error',
+        };
+      }
+    } else {
+      examLast[co.id] = now.millisecondsSinceEpoch;
+    }
+    await savePrefs();
+    notifyListeners();
+    return null;
+  }
+
+  /// Natijani yuborish. null — saqlab bo‘lmadi / отправить результат. null — не удалось.
+  Future<(int, Cert?)?> finishExam(Course co, int correct, int total) async {
+    if (online) {
+      try {
+        final res = await api.call('/api/exam/finish', {'course': co.id, 'correct': correct, 'total': total});
+        _applyExam(res['exam']);
+        _applyCert(res['cert']);
+        await savePrefs();
+        notifyListeners();
+        return ((res['score'] as num?)?.toInt() ?? 0, certs[co.id]);
+      } on ApiError {
+        return null;
+      }
+    }
+    final score = examScore(correct, total);
+    Cert? ce;
+    if (score >= kExamPass) {
+      const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      final r = Random();
+      String part() => List.generate(4, (_) => abc[r.nextInt(abc.length)]).join();
+      ce = certs[co.id] ??
+          Cert(id: 'IDR-${part()}-${part()}', course: co.id, name: displayName, school: school, score: score, issued: now);
+      certs[co.id] = ce;
+    }
+    await savePrefs();
+    notifyListeners();
+    return (score, ce);
+  }
+
+  /// Sertifikatni tekshirish havolasi / ссылка проверки сертификата.
+  String certLink(Cert ce) => '${api.base}/c/${ce.id}';
 
   // ---------------------------------------------------------------- portfolio
   Future<void> saveProject(String course, String code) async {

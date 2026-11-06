@@ -1984,3 +1984,165 @@ class LeagueBadge extends StatelessWidget {
     );
   }
 }
+
+// ============================================================ BAYRAM / ПРАЗДНИК
+/// Konfetti — bir marta yog‘adi (dars yoki imtihon tugaganda).
+/// Конфетти — падает один раз (после урока или экзамена).
+class Confetti extends StatefulWidget {
+  final int count;
+  final Duration duration;
+  const Confetti({super.key, this.count = 70, this.duration = const Duration(milliseconds: 3200)});
+
+  @override
+  State<Confetti> createState() => _ConfettiState();
+}
+
+class _ConfettiState extends State<Confetti> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: widget.duration);
+  late final List<_Bit> _bits;
+
+  static const _colors = [
+    Color(0xFF0A6CFF),
+    Color(0xFF2EA6FF),
+    Color(0xFFFFC21A),
+    Color(0xFFFF5E7E),
+    Color(0xFF34C759),
+    Color(0xFF8E7CFF),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    final r = math.Random();
+    _bits = [
+      for (var i = 0; i < widget.count; i++)
+        _Bit(
+          x: r.nextDouble(),
+          vx: (r.nextDouble() - 0.5) * 0.5,
+          delay: r.nextDouble() * 0.35,
+          speed: 0.75 + r.nextDouble() * 0.6,
+          spin: (r.nextDouble() - 0.5) * 14,
+          size: 6 + r.nextDouble() * 7,
+          color: _colors[r.nextInt(_colors.length)],
+          round: r.nextInt(3) == 0,
+          sway: r.nextDouble() * math.pi * 2,
+        ),
+    ];
+    _c.forward();
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (Motion.reduced(context)) return const SizedBox.shrink();
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: _c,
+        builder: (_, __) => _c.isCompleted
+            ? const SizedBox.shrink()
+            : CustomPaint(painter: _ConfettiPainter(_bits, _c.value), size: Size.infinite),
+      ),
+    );
+  }
+}
+
+class _Bit {
+  final double x, vx, delay, speed, spin, size, sway;
+  final Color color;
+  final bool round;
+  const _Bit(
+      {required this.x,
+      required this.vx,
+      required this.delay,
+      required this.speed,
+      required this.spin,
+      required this.size,
+      required this.color,
+      required this.round,
+      required this.sway});
+}
+
+class _ConfettiPainter extends CustomPainter {
+  final List<_Bit> bits;
+  final double t;
+  _ConfettiPainter(this.bits, this.t);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint();
+    for (final b in bits) {
+      final lt = ((t - b.delay) / (1 - b.delay)).clamp(0.0, 1.0);
+      if (lt <= 0) continue;
+      final y = -0.08 + lt * lt * 1.25 * b.speed + lt * 0.15;
+      final x = b.x + b.vx * lt + math.sin(b.sway + lt * 9) * 0.02;
+      final fade = lt > 0.8 ? (1 - lt) / 0.2 : 1.0;
+      p.color = b.color.withAlpha((255 * fade).round().clamp(0, 255));
+      canvas.save();
+      canvas.translate(x * size.width, y * size.height);
+      canvas.rotate(b.spin * lt);
+      if (b.round) {
+        canvas.drawCircle(Offset.zero, b.size * 0.42, p);
+      } else {
+        // aylanayotgan qog‘oz / вращающаяся бумажка
+        final w = b.size * (0.35 + 0.65 * math.cos(b.sway + lt * 12).abs());
+        canvas.drawRRect(
+            RRect.fromRectAndRadius(Rect.fromCenter(center: Offset.zero, width: w, height: b.size * 0.55),
+                const Radius.circular(1.5)),
+            p);
+      }
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ConfettiPainter old) => old.t != t;
+}
+
+/// Sekin "suzib" turish (yuqori-past) / медленное «парение» (вверх-вниз).
+class Floaty extends StatefulWidget {
+  final Widget child;
+  final double amount;
+  final Duration period;
+  final double phase;
+  const Floaty({super.key, required this.child, this.amount = 6, this.period = const Duration(milliseconds: 3200), this.phase = 0});
+
+  @override
+  State<Floaty> createState() => _FloatyState();
+}
+
+class _FloatyState extends State<Floaty> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: widget.period);
+
+  @override
+  void initState() {
+    super.initState();
+    _c.repeat();
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (Motion.reduced(context)) return widget.child;
+    return AnimatedBuilder(
+      animation: _c,
+      child: widget.child,
+      builder: (_, ch) {
+        final a = (_c.value + widget.phase) * math.pi * 2;
+        return Transform.translate(
+          offset: Offset(0, math.sin(a) * widget.amount),
+          child: Transform.rotate(angle: math.sin(a + 1) * 0.04, child: ch),
+        );
+      },
+    );
+  }
+}

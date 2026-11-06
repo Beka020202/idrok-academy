@@ -5,9 +5,12 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/services.dart' show ByteData;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pdf/widgets.dart' as pw;
 import 'package:kodla/lessons.dart';
 import 'package:kodla/progress.dart';
+import 'package:kodla/screens/certificate.dart';
 import 'package:kodla/screens/helper.dart' show codeIssues;
 import 'package:kodla/screens/lesson.dart' show timeLimitFor;
 
@@ -317,6 +320,52 @@ void main() {
       expect(codeIssues('html', '<h1>Salom', 'uz'), isNotEmpty);
       expect(codeIssues('css', 'p {\n  color: red\n}', 'ru'), isNotEmpty);
       expect(codeIssues('py', 'print("ok")', 'uz'), isEmpty);
+    });
+  });
+
+  group('exam', () {
+    for (final co in kCourses) {
+      for (final lg in const ['beginner', 'advanced', 'master']) {
+        test('exam for ${co.id} / $lg has enough unique answerable questions', () {
+          for (final seed in [1, 2, 3]) {
+            final qs = examQuestions(co.lessonsFor(lg), seed);
+            expect(qs.length, greaterThanOrEqualTo(20), reason: 'only ${qs.length}');
+            if (lg == 'beginner') expect(qs.length, kExamSize);
+            for (final q in qs) {
+              expect(q.type, isNot(anyOf(StepType.read, StepType.tryIt)));
+              if (q.type == StepType.quiz) {
+                expect(q.options.length, greaterThanOrEqualTo(2));
+                expect(q.answer, inInclusiveRange(0, q.options.length - 1));
+              }
+              if (q.type == StepType.fill) expect(q.answers, isNotEmpty);
+              if (q.type == StepType.order) expect(q.lines.length, greaterThanOrEqualTo(2));
+            }
+            final keys = {for (final q in qs) '${q.type}|${q.q?.uz}|${q.code}|${(q.options.map((o) => o.uz).toList()..sort())}|${q.lines}|${q.pre}'};
+            expect(keys.length, qs.length);
+          }
+        });
+      }
+    }
+
+    test('score and pass mark', () {
+      expect(examScore(21, 30), 70);
+      expect(examScore(20, 30), 67);
+      expect(examScore(0, 0), 0);
+    });
+
+    test('certificate JSON round trip and PDF', () async {
+      final ce = Cert(id: 'IDR-AB12-CD34', course: 'py', name: 'Ali Valiyev', school: '46-maktab · Asaka', score: 87,
+          issued: DateTime(2026, 11, 6));
+      final back = Cert.fromJson(jsonDecode(jsonEncode(ce.toJson())) as Map<String, dynamic>);
+      expect(back.id, ce.id);
+      expect(back.score, 87);
+      final t = CertText.of(back, 'https://kodla-api.onrender.com/c/${ce.id}');
+      expect(t.uzLine, contains('Python'));
+      expect(t.link, 'kodla-api.onrender.com/c/IDR-AB12-CD34');
+      pw.Font font(String f) => pw.Font.ttf(ByteData.sublistView(File('assets/fonts/$f.ttf').readAsBytesSync()));
+      final bytes = await buildCertificatePdf(t, CertFonts(font('Manrope-600'), font('Manrope-800'), font('Unbounded-800')));
+      expect(String.fromCharCodes(bytes.take(4)), '%PDF');
+      expect(bytes.length, greaterThan(5000));
     });
   });
 }

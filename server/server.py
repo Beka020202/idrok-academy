@@ -163,6 +163,25 @@ def init_db():
             updated REAL NOT NULL,
             PRIMARY KEY (user_id, course)
         );
+        CREATE TABLE IF NOT EXISTS exams (
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            course TEXT NOT NULL,
+            tries INTEGER NOT NULL DEFAULT 0,
+            best INTEGER NOT NULL DEFAULT 0,
+            started REAL NOT NULL DEFAULT 0,
+            open INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (user_id, course)
+        );
+        CREATE TABLE IF NOT EXISTS certs (
+            id TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            course TEXT NOT NULL,
+            score INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            school TEXT NOT NULL DEFAULT '',
+            issued REAL NOT NULL,
+            UNIQUE (user_id, course)
+        );
         CREATE TABLE IF NOT EXISTS tresults (
             test_id INTEGER NOT NULL REFERENCES ttests(id) ON DELETE CASCADE,
             user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -373,6 +392,73 @@ pre{{margin:0;background:#0A1226;color:#E8F0FF;padding:18px;border-radius:14px;o
 <div class="card">{work}</div><div class="foot">Idrok Academy ilovasida yaratilgan</div></div></body></html>"""
 
 
+# ---------------------------------------------------------------- yakuniy imtihon / итоговый экзамен
+EXAM_SIZE = 30
+EXAM_PASS = 70  # foiz / процент
+EXAM_WAIT = 24 * 3600  # qayta topshirish / пересдача
+EXAM_TIME = 3 * 3600  # bitta urinish uchun eng ko‘p vaqt / максимум на попытку
+COURSE_NAMES = {"html": "HTML", "css": "CSS", "js": "JavaScript", "py": "Python", "ai": "Sun’iy intellekt"}
+COURSE_NAMES_RU = {"html": "HTML", "css": "CSS", "js": "JavaScript", "py": "Python", "ai": "Искусственный интеллект"}
+
+
+def course_done(state, course):
+    """Ligadagi barcha darslar tugaganmi / пройдены ли все уроки лиги."""
+    league = state.get("league") or "beginner"
+    ids = [lid for lid in COURSE_LESSONS.get(course, [])
+           if LESSONS[lid].get("leagues") is None or league in LESSONS[lid]["leagues"]]
+    done = state.get("done") or {}
+    return bool(ids) and all(done.get(lid) for lid in ids)
+
+
+def new_cert_id(conn):
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    while True:
+        cid = "IDR-" + "".join(secrets.choice(alphabet) for _ in range(4)) + "-" + \
+              "".join(secrets.choice(alphabet) for _ in range(4))
+        if conn.execute("SELECT 1 FROM certs WHERE id=?", (cid,)).fetchone() is None:
+            return cid
+
+
+def cert_json(row):
+    return {"id": row["id"], "course": row["course"], "score": row["score"], "name": row["name"],
+            "school": row["school"], "issued": int(row["issued"] * 1000)}
+
+
+def exam_json(row):
+    return {"course": row["course"], "tries": row["tries"], "best": row["best"],
+            "last": int(row["started"] * 1000), "open": bool(row["open"])}
+
+
+def cert_page(row):
+    """Sertifikatni tekshirish sahifasi / страница проверки сертификата."""
+    e = _html.escape
+    if row is None:
+        body = ('<div class="bad">✕</div><h1>Topilmadi</h1><p>Bunday raqamli sertifikat yo‘q.<br>'
+                'Сертификат с таким номером не найден.</p>')
+    else:
+        date = time.strftime("%d.%m.%Y", time.gmtime(row["issued"] + 5 * 3600))
+        uz, ru = e(COURSE_NAMES.get(row["course"], row["course"])), e(COURSE_NAMES_RU.get(row["course"], row["course"]))
+        school = f'<div class="row"><span>Maktab · Школа</span><b>{e(row["school"])}</b></div>' if row["school"] else ""
+        body = (f'<div class="ok">✓</div><h1>Haqiqiy sertifikat</h1><p class="sub">Подлинный сертификат</p>'
+                f'<div class="name">{e(row["name"])}</div>'
+                f'<div class="row"><span>Kurs · Курс</span><b>{uz} · {ru}</b></div>{school}'
+                f'<div class="row"><span>Natija · Результат</span><b>{row["score"]}%</b></div>'
+                f'<div class="row"><span>Sana · Дата</span><b>{date}</b></div>'
+                f'<div class="row"><span>ID</span><b>{e(row["id"])}</b></div>')
+    return f"""<!DOCTYPE html><html lang="uz"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>Sertifikat · Idrok Academy</title>
+<style>*{{box-sizing:border-box}}body{{margin:0;font-family:-apple-system,system-ui,Segoe UI,Roboto,sans-serif;
+background:linear-gradient(160deg,#2EA6FF,#0047D6);min-height:100vh;color:#0A1226;padding:32px 16px;display:flex;
+justify-content:center}}.card{{background:#fff;border-radius:24px;padding:28px 22px;max-width:440px;width:100%;
+box-shadow:0 20px 50px rgba(0,30,90,.35);text-align:center}}.brand{{font-weight:800;color:#0A6CFF;letter-spacing:1.5px;
+font-size:12px}}.ok,.bad{{width:64px;height:64px;border-radius:50%;margin:18px auto 10px;display:flex;align-items:center;
+justify-content:center;font-size:32px;color:#fff;background:#34C759}}.bad{{background:#FF3B30}}h1{{margin:4px 0;
+font-size:24px;letter-spacing:-.5px}}.sub{{margin:0 0 16px;color:#6B7280}}.name{{font-size:22px;font-weight:800;
+margin:8px 0 16px}}.row{{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-top:1px solid #EEF1F6;
+text-align:left;font-size:15px}}.row span{{color:#6B7280}}.row b{{text-align:right}}p{{color:#4B5563;line-height:1.5}}
+</style></head><body><div class="card"><div class="brand">IDROK ACADEMY</div>{body}</div></body></html>"""
+
+
 def grade_test(body, answers):
     qs = body["questions"]
     if not isinstance(answers, list):
@@ -502,6 +588,17 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, {"ok": True, "app": "idrok"})
         if path == "/api/shop":
             return self.send_json(200, {"items": list(SHOP.values())})
+        if path.startswith("/c/"):
+            with db() as conn:
+                row = conn.execute("SELECT * FROM certs WHERE id=?", (path[3:].strip().upper(),)).fetchone()
+            page = cert_page(row).encode()
+            self.send_response(200 if row is not None else 404)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(page)))
+            self.send_header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'")
+            self.end_headers()
+            self.wfile.write(page)
+            return None
         if path.startswith("/p/"):
             with db() as conn:
                 row = conn.execute("SELECT p.*, u.name, u.username, u.school, u.district FROM portfolio p "
@@ -537,6 +634,12 @@ class Handler(BaseHTTPRequestHandler):
 
             if path == "/api/me":
                 return self.send_json(200, {"user": public_user(user)})
+
+            if path == "/api/exams":
+                exams = conn.execute("SELECT * FROM exams WHERE user_id=?", (user["id"],)).fetchall()
+                certs = conn.execute("SELECT * FROM certs WHERE user_id=?", (user["id"],)).fetchall()
+                return self.send_json(200, {"exams": [exam_json(r) for r in exams], "certs": [cert_json(r) for r in certs],
+                                            "now": int(time.time() * 1000)})
 
             if path == "/api/leaderboard":
                 period = "month" if params.get("period") == "month" else "week"
@@ -698,7 +801,7 @@ class Handler(BaseHTTPRequestHandler):
             old = state_of(user)
 
             game = ("/api/complete", "/api/placement", "/api/cancel", "/api/helper", "/api/claim", "/api/chest",
-                    "/api/shop/buy", "/api/tests/submit", "/api/portfolio")
+                    "/api/shop/buy", "/api/tests/submit", "/api/portfolio", "/api/exam/start", "/api/exam/finish")
             if path in game and user["role"] != "student":
                 return self.send_json(403, {"error": "forbidden"})
             if path.startswith("/api/teacher/") and user["role"] != "teacher":
@@ -810,6 +913,48 @@ class Handler(BaseHTTPRequestHandler):
                 # XP berilmaydi / XP не начисляется
                 key = [{"answer": q.get("answer"), "answers": q.get("answers")} for q in body["questions"]]
                 return self.send_json(200, {"correct": correct, "total": total, "best": best, "key": key})
+
+            if path == "/api/exam/start":
+                course = clean(data.get("course"), 20)
+                if course not in COURSE_LESSONS or not course_done(old, course):
+                    return self.send_json(400, {"error": "locked"})
+                if conn.execute("SELECT 1 FROM certs WHERE user_id=? AND course=?", (user["id"], course)).fetchone():
+                    return self.send_json(400, {"error": "passed"})
+                ex = conn.execute("SELECT * FROM exams WHERE user_id=? AND course=?", (user["id"], course)).fetchone()
+                now = time.time()
+                if ex is not None and ex["tries"] > 0 and now < ex["started"] + EXAM_WAIT:
+                    return self.send_json(400, {"error": "wait", "until": int((ex["started"] + EXAM_WAIT) * 1000)})
+                # Boshlash — urinish hisoblanadi (chiqib ketish ham) / старт — это попытка (выход тоже)
+                conn.execute("INSERT INTO exams (user_id, course, tries, best, started, open) VALUES (?,?,1,0,?,1) "
+                             "ON CONFLICT(user_id, course) DO UPDATE SET tries=tries+1, started=excluded.started, open=1",
+                             (user["id"], course, now))
+                ex = conn.execute("SELECT * FROM exams WHERE user_id=? AND course=?", (user["id"], course)).fetchone()
+                return self.send_json(200, {"exam": exam_json(ex)})
+
+            if path == "/api/exam/finish":
+                course = clean(data.get("course"), 20)
+                ex = conn.execute("SELECT * FROM exams WHERE user_id=? AND course=?", (user["id"], course)).fetchone()
+                if ex is None or not ex["open"] or time.time() > ex["started"] + EXAM_TIME:
+                    return self.send_json(400, {"error": "exam"})
+                total = max(1, min(int(data.get("total") or 0), EXAM_SIZE))
+                correct = max(0, min(int(data.get("correct") or 0), total))
+                score = round(correct * 100 / total)
+                if total < EXAM_SIZE // 2:
+                    score = 0
+                conn.execute("UPDATE exams SET open=0, best=MAX(best, ?) WHERE user_id=? AND course=?",
+                             (score, user["id"], course))
+                cert = None
+                if score >= EXAM_PASS:
+                    row = conn.execute("SELECT * FROM certs WHERE user_id=? AND course=?", (user["id"], course)).fetchone()
+                    if row is None:
+                        school = " · ".join(x for x in (user["school"], user["district"]) if x)
+                        conn.execute("INSERT INTO certs (id, user_id, course, score, name, school, issued) VALUES (?,?,?,?,?,?,?)",
+                                     (new_cert_id(conn), user["id"], course, score, user["name"] or user["username"],
+                                      school, time.time()))
+                        row = conn.execute("SELECT * FROM certs WHERE user_id=? AND course=?", (user["id"], course)).fetchone()
+                    cert = cert_json(row)
+                ex = conn.execute("SELECT * FROM exams WHERE user_id=? AND course=?", (user["id"], course)).fetchone()
+                return self.send_json(200, {"passed": cert is not None, "score": score, "cert": cert, "exam": exam_json(ex)})
 
             if path == "/api/portfolio":
                 course = clean(data.get("course"), 20)

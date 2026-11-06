@@ -6,6 +6,7 @@ import '../state.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'cards.dart' show ProjectCard;
+import 'certificate.dart';
 import 'lesson.dart';
 import 'teacher_tests.dart' show SchoolTestsSection;
 
@@ -25,6 +26,7 @@ class CoursesTab extends StatelessWidget {
         SectionHeader(s.t('course_path')),
         _Path(course: course),
         _Chest(course: course),
+        if (!s.isStaff) ExamCard(course: course),
         ProjectCard(course: course),
         const SchoolTestsSection(),
       ],
@@ -325,6 +327,100 @@ class _Chest extends StatelessWidget {
           AppButton(s.t('chest_open'),
               onPressed: () => s.chest(course), kind: BtnKind.success, height: 42, icon: Icons.bolt_rounded),
       ]),
+    );
+  }
+}
+
+// ------------------------------------------------------------ yakuniy imtihon / итоговый экзамен
+String waitText(AppState s, Duration d) {
+  final h = d.inHours, m = d.inMinutes % 60;
+  return h > 0 ? '$h ${s.t('hours_short')} $m ${s.t('min_short')}' : '${m < 1 ? 1 : m} ${s.t('min_short')}';
+}
+
+void openExam(BuildContext context, Course co) {
+  Navigator.of(context).push(AppRoute<void>(builder: (_) => LessonScreen.exam(examCourse: co.id)));
+}
+
+class ExamCard extends StatelessWidget {
+  final Course course;
+  const ExamCard({super.key, required this.course});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppScope.of(context);
+    final c = s.c;
+    final cert = s.certs[course.id];
+    final done = s.courseComplete(course);
+    final wait = s.examWait(course);
+    final ready = done && cert == null && wait == Duration.zero;
+
+    if (ready) {
+      return Container(
+        key: const ValueKey('exam-card'),
+        padding: const EdgeInsets.all(S.x5),
+        decoration: BoxDecoration(
+          borderRadius: R.all(R.xl),
+          gradient: const LinearGradient(
+              begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFFFC94A), Color(0xFFFF9F0A)]),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Floaty(child: Icon(Icons.workspace_premium_rounded, color: kWhite, size: 44, shadows: kTextShadow)),
+            const SizedBox(width: S.x3),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(s.t('exam_title'), style: AppType.title3.copyWith(color: kWhite)),
+                const SizedBox(height: 2),
+                Text(s.t('exam_ready_text').replaceAll('{q}', '$kExamSize').replaceAll('{n}', '$kExamPass'),
+                    style: AppType.footnote.copyWith(color: kWhite.withAlpha(0xE6))),
+              ]),
+            ),
+          ]),
+          const SizedBox(height: S.x4),
+          SizedBox(
+            width: double.infinity,
+            child: Pressable(
+              key: const ValueKey('exam-open'),
+              onTap: () => openExam(context, course),
+              child: Container(
+                height: 50,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(color: kWhite, borderRadius: R.all(R.pill)),
+                child: Text(s.t('exam_start'), style: AppType.headline.copyWith(color: const Color(0xFFB86E00))),
+              ),
+            ),
+          ),
+        ]),
+      );
+    }
+
+    final (IconData icon, String sub) = cert != null
+        ? (Icons.workspace_premium_rounded, '${s.t('cert_got')} · ${cert.score}%')
+        : !done
+            ? (Icons.lock_rounded, s.t('exam_locked'))
+            : (Icons.schedule_rounded, '${s.t('exam_retry_in')} ${waitText(s, wait)}');
+    return Pressable(
+      key: const ValueKey('exam-card'),
+      onTap: cert != null ? () => openCertificate(context, cert) : null,
+      scale: 0.98,
+      child: AppCard(
+        padding: const EdgeInsets.all(S.x4),
+        child: Row(children: [
+          IconTile(icon,
+              size: 56,
+              bg: cert != null ? c.yellowSoft : c.surfaceAlt,
+              color: cert != null ? c.yellowText : c.text3),
+          const SizedBox(width: S.x4),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(s.t(cert != null ? 'certificate' : 'exam_title'), style: AppType.headline.copyWith(color: c.text)),
+              const SizedBox(height: 2),
+              Text(sub, style: AppType.footnote.copyWith(color: c.text2)),
+            ]),
+          ),
+          if (cert != null) Icon(Icons.chevron_right_rounded, color: c.text3),
+        ]),
+      ),
     );
   }
 }

@@ -14,6 +14,7 @@ import '../theme.dart';
 import '../widgets.dart';
 import 'anim_player.dart';
 import 'cards.dart';
+import 'certificate.dart';
 import 'helper.dart';
 import 'play.dart' show formatRun;
 
@@ -75,10 +76,17 @@ int timeLimitFor(LessonStep st, String league) {
 class LessonScreen extends StatefulWidget {
   final String? lessonId;
   final bool placement;
-  const LessonScreen({super.key, required String this.lessonId}) : placement = false;
+  final String? examCourse; // yakuniy imtihon / итоговый экзамен
+  const LessonScreen({super.key, required String this.lessonId})
+      : placement = false,
+        examCourse = null;
   const LessonScreen.placement({super.key})
       : lessonId = null,
+        examCourse = null,
         placement = true;
+  const LessonScreen.exam({super.key, required String this.examCourse})
+      : lessonId = null,
+        placement = false;
 
   @override
   State<LessonScreen> createState() => _LessonScreenState();
@@ -134,7 +142,12 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
 
   final _fillCtrl = TextEditingController();
 
+  // Imtihon natijasi / результат экзамена
+  (int, Cert?)? examResult;
+
   AppState get s => AppScope.read(context);
+  bool get _exam => widget.examCourse != null;
+  bool get _oneShot => widget.placement || _exam;
   LessonStep get step => steps[i];
   bool get _testMode => AppScope.read(context).testMode;
 
@@ -142,7 +155,9 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    if (!widget.placement) {
+    if (_exam) {
+      course = kCourses.firstWhere((x) => x.id == widget.examCourse);
+    } else if (!widget.placement) {
       final e = kAllLessons[widget.lessonId]!;
       lesson = e.$1;
       course = e.$2;
@@ -154,8 +169,12 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
   void _prepare() {
     final st = AppScope.read(context);
     seed = st.testMode ? 7 : math.Random().nextInt(1 << 30);
-    steps = widget.placement ? placementTest(seed) : [...lesson!.build(seed, st.st.difficultyFor(lesson!.id))];
-    if (!widget.placement && steps.any(_needsRunner)) {
+    steps = widget.placement
+        ? placementTest(seed)
+        : _exam
+            ? examQuestions(st.lessonsOf(course!), seed)
+            : [...lesson!.build(seed, st.st.difficultyFor(lesson!.id))];
+    if (!_oneShot && steps.any(_needsRunner)) {
       if (st.testMode) {
         runnerOk = true;
       } else {
@@ -233,6 +252,12 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
     }
     phase = _Phase.done; // qayta chaqirilmasin / чтобы не вызвать повторно
     final app = s;
+    if (_exam) {
+      app.pendingNotice = byUser ? '' : app.t('exam_cancelled');
+      if (byUser) app.toast(app.t('exam_cancelled'), icon: Icons.block_rounded);
+      Navigator.of(context).pop();
+      return;
+    }
     app.cancelLessonTest(lesson!);
     if (byUser) {
       app.pendingNotice = '';
@@ -262,8 +287,21 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
     _fillCtrl.clear();
   }
 
+  bool _starting = false;
+
   Future<void> _start() async {
+    if (_starting) return;
     HapticFeedback.mediumImpact();
+    if (_exam) {
+      setState(() => _starting = true);
+      final err = await s.startExam(course!);
+      if (!mounted) return;
+      setState(() => _starting = false);
+      if (err != null) {
+        s.toast(s.t(err), icon: Icons.info_rounded);
+        return;
+      }
+    }
     if (FocusMode.isAndroid && dndAccess) dndOn = await FocusMode.enable();
     if (!mounted) return;
     setState(() {
@@ -307,7 +345,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
   // ---------------------------------------------------------------- vaqt / время
   int get _limit => timeLimitFor(step, widget.placement ? '' : s.st.league);
 
-  bool get _timerRunning => phase == _Phase.test && i < steps.length && step.timed && status != 'ok' && !timedOut && !(widget.placement && status != null);
+  bool get _timerRunning => phase == _Phase.test && i < steps.length && step.timed && status != 'ok' && !timedOut && !(_oneShot && status != null);
 
   void _enterStep() {
     if (runnerOk == false && i < steps.length && _needsRunner(steps[i])) steps[i] = offlineFallback(steps[i], seed + i);
@@ -375,7 +413,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
 
   // ---------------------------------------------------------------- amallar / действия
   void _pick(int k) {
-    if (status == 'ok' || timedOut || (widget.placement && status != null)) return;
+    if (status == 'ok' || timedOut || (_oneShot && status != null)) return;
     HapticFeedback.selectionClick();
     setState(() {
       sel = k;
@@ -383,7 +421,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
     });
   }
 
-  bool get _locked => status == 'ok' || timedOut || (widget.placement && status != null);
+  bool get _locked => status == 'ok' || timedOut || (_oneShot && status != null);
 
   bool get _canCheck => !_locked && switch (step.type) {
         StepType.quiz => sel != null,
@@ -481,6 +519,10 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
       _praise = s.pick('praise');
       return;
     }
+    if (_exam) {
+      await _saveExam();
+      return;
+    }
     await _save();
   }
 
@@ -502,6 +544,22 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
       result = r;
       saveFailed = r == null;
       _praise = s.pick('praise');
+    });
+    if (r != null) HapticFeedback.heavyImpact();
+  }
+
+  Future<void> _saveExam() async {
+    if (saving) return;
+    setState(() {
+      saving = true;
+      saveFailed = false;
+    });
+    final r = await s.finishExam(course!, correctFirst, timedTotal);
+    if (!mounted) return;
+    setState(() {
+      saving = false;
+      examResult = r;
+      saveFailed = r == null;
     });
     if (r != null) HapticFeedback.heavyImpact();
   }
@@ -562,7 +620,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
     final Widget content = switch (phase) {
       _Phase.gate => _gate(s),
       _Phase.test => _stepView(s),
-      _Phase.done => widget.placement ? _placementDone(s) : _done(s),
+      _Phase.done => widget.placement ? _placementDone(s) : (_exam ? _examDone(s) : _done(s)),
     };
 
     final top = phase == _Phase.test ? _topBar(s) : _gateBar(s);
@@ -665,7 +723,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
         if (i < steps.length && step.timed) ...[
           const SizedBox(width: S.x2),
           _TimerPill(left: _left, secs: _secs, active: _timerRunning),
-        ] else if (!widget.placement) ...[
+        ] else if (lesson != null) ...[
           const SizedBox(width: S.x2),
           AppPill('${lesson!.xp}', icon: Icons.bolt_rounded, iconColor: c.yellow, small: true),
         ],
@@ -677,7 +735,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
   Widget _gate(AppState s) {
     final c = s.c;
     final timed = steps.where((x) => x.timed).length;
-    final title = widget.placement ? s.t('warm_title') : s.tr(lesson!.title);
+    final title = widget.placement ? s.t('warm_title') : (_exam ? s.t('exam_title') : s.tr(lesson!.title));
     final sub = widget.placement ? s.t('warm_sub') : s.tr(course!.name);
 
     Widget rule(IconData icon, String text, {bool danger = false}) => Padding(
@@ -707,8 +765,9 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
       const SizedBox(height: S.x4),
       Wrap(alignment: WrapAlignment.center, spacing: S.x2, runSpacing: S.x2, children: [
         AppPill('$timed ${s.t('questions')}', icon: Icons.quiz_rounded),
-        if (!widget.placement) AppPill('+${lesson!.xp} XP', icon: Icons.bolt_rounded, iconColor: c.yellow),
-        if (!widget.placement && (s.st.retries[lesson!.id] ?? 0) > 0)
+        if (lesson != null) AppPill('+${lesson!.xp} XP', icon: Icons.bolt_rounded, iconColor: c.yellow),
+        if (_exam) AppPill('$kExamPass% ${s.t('exam_to_pass')}', icon: Icons.workspace_premium_rounded, tone: Tone.yellow),
+        if (lesson != null && (s.st.retries[lesson!.id] ?? 0) > 0)
           AppPill(s.t('harder'), icon: Icons.trending_up_rounded, tone: Tone.danger),
       ]),
     ]);
@@ -719,9 +778,15 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
         Text(s.t('rules'), style: AppType.headline.copyWith(color: c.text)),
         const SizedBox(height: S.x3),
         rule(Icons.timer_rounded, s.t('rule_time')),
-        rule(Icons.exit_to_app_rounded, s.t(widget.placement ? 'rule_leave_warm' : 'rule_leave'), danger: true),
-        if (!widget.placement) rule(Icons.autorenew_rounded, s.t('rule_retry')),
-        if (!widget.placement) rule(Icons.smart_toy_rounded, s.t('rule_helper').replaceAll('{n}', '$kHelperCost')),
+        if (_exam) ...[
+          rule(Icons.looks_one_rounded, s.t('rule_exam_once')),
+          rule(Icons.workspace_premium_rounded, s.t('rule_exam_pass').replaceAll('{n}', '$kExamPass')),
+          rule(Icons.exit_to_app_rounded, s.t('rule_exam_leave'), danger: true),
+        ] else ...[
+          rule(Icons.exit_to_app_rounded, s.t(widget.placement ? 'rule_leave_warm' : 'rule_leave'), danger: true),
+          if (!widget.placement) rule(Icons.autorenew_rounded, s.t('rule_retry')),
+          if (!widget.placement) rule(Icons.smart_toy_rounded, s.t('rule_helper').replaceAll('{n}', '$kHelperCost')),
+        ],
       ]),
     );
 
@@ -806,9 +871,10 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
           ],
         ),
       ),
-      AppButton(s.t(widget.placement ? 'warm_go' : 'test_start'),
+      AppButton(s.t(widget.placement ? 'warm_go' : (_exam ? 'exam_start' : 'test_start')),
           key: const ValueKey('test-start'),
-          onPressed: _start,
+          onPressed: _starting ? null : _start,
+          loading: _starting,
           expand: true,
           height: 56,
           icon: Icons.play_arrow_rounded),
@@ -981,10 +1047,10 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
       if (!ok) {
         if (timedOut) {
           extra.add(s.t('time_up_text'));
-        } else if (!widget.placement) {
+        } else if (!_oneShot) {
           extra.add(s.t('try_again'));
         }
-        if (wrongOnce || widget.placement) {
+        if (wrongOnce || _oneShot) {
           if (st.type == StepType.fill) {
             extra.add('${s.t('answer')}: ${st.answers.first}');
             extraMono = true;
@@ -1011,9 +1077,9 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
       );
     }
 
-    final showHelper = !ok && hasFeedback && !widget.placement;
+    final showHelper = !ok && hasFeedback && !_oneShot;
     final Widget action;
-    if (st.type == StepType.read || ok || timedOut || (widget.placement && hasFeedback)) {
+    if (st.type == StepType.read || ok || timedOut || (_oneShot && hasFeedback)) {
       action = AppButton(s.t('next'),
           key: const ValueKey('step-next'),
           onPressed: _next,
@@ -1152,7 +1218,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
 
   _OptState _optionState(int k, LessonStep st) {
     if (status != null) {
-      final reveal = status == 'ok' || wrongOnce || timedOut || widget.placement;
+      final reveal = status == 'ok' || wrongOnce || timedOut || _oneShot;
       if (k == st.answer && reveal) return _OptState.correct;
       if (k == sel && status == 'no') return _OptState.wrong;
       return _OptState.idle;
@@ -1243,7 +1309,8 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
       if (!r.first) AppPill(s.t('review'), icon: Icons.replay_rounded),
     ];
 
-    return Center(
+    return Stack(children: [
+      Center(
       child: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -1331,7 +1398,107 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
               expand: true),
         ]),
       ),
+    ),
+      Positioned.fill(child: Confetti(count: r.perfect ? 110 : 70)),
+    ]);
+  }
+
+  // ---------------------------------------------------------------- imtihon yakuni / итог экзамена
+  Widget _examDone(AppState s) {
+    final c = s.c;
+    if (saving || (examResult == null && !saveFailed)) {
+      return Center(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          CupertinoActivityIndicator(color: c.text2, radius: 13),
+          const SizedBox(height: S.x4),
+          Text(s.t('saving'), style: AppType.callout.copyWith(color: c.text2)),
+        ]),
+      );
+    }
+    if (saveFailed) {
+      return Center(
+        child: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            EmptyState(icon: Icons.cloud_off_rounded, title: s.t('save_failed'), error: true),
+            const SizedBox(height: S.x5),
+            AppButton(s.t('retry'), onPressed: _saveExam, expand: true, height: 56, icon: Icons.refresh_rounded),
+          ]),
+        ),
+      );
+    }
+    final (score, cert) = examResult!;
+    final passed = cert != null && score >= kExamPass;
+    final body = Center(
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Center(
+            child: _Trophy(
+                icon: passed ? Icons.workspace_premium_rounded : Icons.replay_rounded, gold: passed),
+          ),
+          const SizedBox(height: S.x6),
+          Appear(
+            index: 1,
+            child: Column(children: [
+              Text(s.t(passed ? 'exam_passed_title' : 'exam_failed_title'),
+                  key: ValueKey(passed ? 'exam-passed' : 'exam-failed'),
+                  textAlign: TextAlign.center,
+                  style: AppType.largeTitle.copyWith(color: c.text)),
+              const SizedBox(height: S.x2),
+              Text(
+                  passed
+                      ? s.t('exam_passed_text')
+                      : s.t('exam_failed_text').replaceAll('{n}', '$kExamPass'),
+                  textAlign: TextAlign.center,
+                  style: AppType.callout.copyWith(color: c.text2)),
+            ]),
+          ),
+          const SizedBox(height: S.x6),
+          Appear(
+            index: 2,
+            child: Row(children: [
+              _Reward(icon: Icons.percent_rounded, value: score, prefix: '', label: s.t('exam_score'), yellow: passed),
+              const SizedBox(width: S.x3),
+              _Reward(
+                  icon: Icons.check_circle_rounded,
+                  value: correctFirst,
+                  prefix: '',
+                  label: '${s.t('correct')} / $timedTotal',
+                  yellow: false),
+            ]),
+          ),
+          if (passed) ...[
+            const SizedBox(height: S.x5),
+            Appear(
+              index: 3,
+              child: Pressable(
+                key: const ValueKey('exam-cert'),
+                onTap: () => openCertificate(context, cert!),
+                scale: 0.98,
+                child: CertificateView(CertText.of(cert!, s.certLink(cert!))),
+              ),
+            ),
+          ],
+          const SizedBox(height: S.x7),
+          if (passed) ...[
+            AppButton(s.t('cert_open'),
+                key: const ValueKey('cert-open'),
+                onPressed: () => openCertificate(context, cert!),
+                expand: true,
+                height: 56,
+                icon: Icons.workspace_premium_rounded),
+            const SizedBox(height: S.x3),
+          ],
+          AppButton(s.t('back'),
+              key: const ValueKey('lesson-back'),
+              onPressed: () => Navigator.of(context).maybePop(),
+              kind: passed ? BtnKind.secondary : BtnKind.primary,
+              expand: true),
+        ]),
+      ),
     );
+    if (!passed) return body;
+    return Stack(children: [body, const Positioned.fill(child: Confetti(count: 130))]);
   }
 }
 

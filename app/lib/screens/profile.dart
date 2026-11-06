@@ -6,6 +6,7 @@ import '../state.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'cards.dart' show CardsScreen;
+import 'certificate.dart' show openCertificates;
 import 'profile_form.dart';
 import 'reminder.dart' show ReminderScreen;
 
@@ -140,6 +141,13 @@ class _ProfileTabState extends State<ProfileTab> {
           title: s.t('my_cards'),
           value: '${s.savedCards.length}',
           onTap: () => push(const CardsScreen())),
+      GroupRow(
+          key: const ValueKey('row-certs'),
+          icon: Icons.workspace_premium_rounded,
+          color: const Color(0xFFFFB800),
+          title: s.t('my_certs'),
+          value: '${s.certs.length}',
+          onTap: () => openCertificates(context)),
       GroupRow(
           key: const ValueKey('row-play'),
           icon: Icons.terminal_rounded,

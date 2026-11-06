@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kodla/lessons.dart' show kCourses;
 import 'package:kodla/main.dart';
 import 'package:kodla/screens/lesson.dart' show openLesson;
 import 'package:kodla/state.dart';
@@ -231,6 +232,41 @@ void main() {
     await shot(t, '${n++}-shop-backpack');
     await t.tapAt(const Offset(30, 60));
     await settle(t);
+
+    // Yakuniy imtihon va sertifikat / итоговый экзамен и сертификат
+    for (final l in state.lessonsOf(kCourses.first)) {
+      state.st.done[l.id] = true;
+    }
+    state.pickCourse('html');
+    state.go('home');
+    await settle(t, 1500);
+    await shot(t, '${n++}-home-exam-ready');
+    state.go('courses');
+    await settle(t, 900);
+    await t.drag(find.byType(Scrollable).first, const Offset(0, -900));
+    await settle(t, 900);
+    await shot(t, '${n++}-courses-exam-card');
+    await tapKey(t, const ValueKey('exam-open'));
+    await settle(t, 900);
+    await shot(t, '${n++}-exam-gate');
+    await tapKey(t, const ValueKey('test-start'));
+    for (var g = 0; g < 40 && !has(const ValueKey('exam-passed')); g++) {
+      await settle(t);
+      if (has(const ValueKey('test-solution'))) {
+        if (g == 3) await shot(t, '${n++}-exam-question');
+        await answer(t, sol(t));
+        await tapKey(t, const ValueKey('step-check'));
+      }
+      if (has(const ValueKey('step-next'))) await tapKey(t, const ValueKey('step-next'));
+    }
+    await settle(t, 1100);
+    await shot(t, '${n++}-exam-passed');
+    await tapKey(t, const ValueKey('cert-open'));
+    await settle(t, 1200);
+    await shot(t, '${n++}-certificate');
+    await tapKey(t, const ValueKey('page-back'));
+    await tapKey(t, const ValueKey('lesson-back'));
+    await settle(t, 900);
 
     state.go('ranking');
     await settle(t, 900);

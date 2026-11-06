@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kodla/lessons.dart';
 import 'package:kodla/main.dart';
 import 'package:kodla/state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -250,6 +251,29 @@ void main() {
     await tapKey(tester, const ValueKey('reminder-skip'));
     await settle(tester, 900);
     expect(state.reminderMinutes, -1);
+
+    // 9) Yakuniy imtihon va sertifikat / итоговый экзамен и сертификат
+    await tester.pump(const Duration(seconds: 4));
+    final html = kCourses.first;
+    for (final l in state.lessonsOf(html)) {
+      state.st.done[l.id] = true;
+    }
+    state.pickCourse('html');
+    await tapTab(tester, 'courses');
+    await settle(tester, 900);
+    await tapKey(tester, const ValueKey('exam-open'));
+    expect(find.text('Yakuniy imtihon'), findsWidgets);
+    await tapKey(tester, const ValueKey('test-start'));
+    await playSteps(tester, doneText: 'Tabriklaymiz!');
+    expect(state.certs['html'], isNotNull);
+    expect(state.certs['html']!.score, 100);
+    await tester.pump(const Duration(seconds: 4));
+    await tapKey(tester, const ValueKey('cert-open'));
+    expect(find.text('SERTIFIKAT'), findsWidgets);
+    expect(find.byKey(const ValueKey('cert-download')), findsOneWidget);
+    await tapKey(tester, const ValueKey('page-back'));
+    await tapKey(tester, const ValueKey('lesson-back'));
+    expect(find.text('Sertifikat'), findsWidgets);
 
     // Bildirishnoma yopilishini kutamiz / ждём, пока скроется уведомление
     await tester.pump(const Duration(seconds: 4));
