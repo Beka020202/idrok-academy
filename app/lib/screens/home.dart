@@ -173,7 +173,7 @@ class _CourseTile extends StatelessWidget {
         s.go('courses');
       },
       child: Container(
-        height: wide ? 132 : 168,
+        height: wide ? 150 : 172,
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           borderRadius: R.all(R.xl),

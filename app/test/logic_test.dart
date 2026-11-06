@@ -340,7 +340,7 @@ void main() {
               if (q.type == StepType.fill) expect(q.answers, isNotEmpty);
               if (q.type == StepType.order) expect(q.lines.length, greaterThanOrEqualTo(2));
             }
-            final keys = {for (final q in qs) '${q.type}|${q.q?.uz}|${q.code}|${(q.options.map((o) => o.uz).toList()..sort())}|${q.lines}|${q.pre}'};
+            final keys = {for (final q in qs) '${q.type}|${q.q?.uz}|${q.code}|${(q.options.map((o) => o.uz).toList()..sort())}|${q.lines}|${q.pre}|${q.post}'};
             expect(keys.length, qs.length);
           }
         });
