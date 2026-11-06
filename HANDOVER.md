@@ -83,3 +83,9 @@ Add an entry to `kScenes` in `app/lib/content/scenes.dart` with the lesson id. S
 - Deleting lessons (students' progress uses lesson ids).
 - Adding new packages to `pubspec.yaml` (they often break the Android/iOS build).
 - Anything with the server's database structure.
+
+## Final exams and certificates (v4)
+- `app/lib/content/exam.dart`: `examQuestions()` builds 30 questions from the course lessons (no code runner needed); pass = 70%, retry after 24 h.
+- Exam runs in `LessonScreen.exam(examCourse:)`: one answer per question, leaving the app cancels it and counts as an attempt.
+- Server: `/api/exam/start`, `/api/exam/finish`, `GET /api/exams`, public check page `/c/<ID>` (tables `exams`, `certs`).
+- Certificate PDF: `app/lib/screens/certificate.dart` (`pdf` + `printing` packages, fonts from app assets).
