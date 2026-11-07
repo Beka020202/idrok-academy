@@ -59,6 +59,19 @@ jobs:
           name: kodla-android
           path: app/build/app/outputs/flutter-apk/app-release.apk
 
+      # To‘g‘ridan-to‘g‘ri yuklab olish havolasi (GitHub akkauntisiz):
+      # Прямая ссылка для скачивания (без аккаунта GitHub):
+      # https://github.com/<repo>/releases/latest/download/Idrok-Academy.apk
+      - name: APK → Release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cp build/app/outputs/flutter-apk/app-release.apk Idrok-Academy.apk
+          gh release delete latest --yes --cleanup-tag -R "${{ github.repository }}" || true
+          gh release create latest Idrok-Academy.apk -R "${{ github.repository }}" --target "${{ github.sha }}" \
+            --title "Idrok Academy (Android)" --notes "Build ${{ github.run_number }} · ${{ github.sha }}" --latest
+
       - name: Save logs
         if: always()
         working-directory: ${{ github.workspace }}/ci-logs
