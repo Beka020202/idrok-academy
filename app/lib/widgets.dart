@@ -1680,6 +1680,14 @@ class _MiniStat extends StatelessWidget {
 }
 
 /// Ustiga ochiladigan sahifa qobig‘i / оболочка открываемой поверх страницы.
+/// Ochilgan sahifa ichidami / внутри открытой страницы ли.
+class InPage extends InheritedWidget {
+  const InPage({super.key, required super.child});
+  static bool of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<InPage>() != null;
+  @override
+  bool updateShouldNotify(InPage oldWidget) => false;
+}
+
 class PageShell extends StatelessWidget {
   final Widget child;
   const PageShell({super.key, required this.child});
@@ -1695,7 +1703,7 @@ class PageShell extends StatelessWidget {
           bottom: false,
           child: Align(
             alignment: Alignment.topCenter,
-            child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 640), child: child),
+            child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 640), child: InPage(child: child)),
           ),
         ),
       ),
@@ -1799,7 +1807,7 @@ class TabPage extends StatelessWidget {
       physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       children: [
-        Header(back: Navigator.of(context).canPop()),
+        Header(back: InPage.of(context) && Navigator.of(context).canPop()),
         if (title != null) ...[
           const SizedBox(height: S.x3),
           LargeTitle(title!, subtitle: subtitle, trailing: trailing),
