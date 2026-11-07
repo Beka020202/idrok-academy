@@ -37,6 +37,7 @@ from progress import (HELPER_COST, LEAGUES, cancel_test, claim_quest, complete_l
                       open_chest, promote, set_league, spend)
 from runner import client_ip, handle_run
 import cloud  # noqa: E402  Supabase zaxirasi / резервная копия Supabase
+import platform_api  # noqa: E402  darslar, AI, kitoblar / уроки, AI, книги
 
 HERE = Path(__file__).resolve().parent
 DB_PATH = Path(os.environ.get("KODLA_DB_PATH", str(HERE / "kodla.db")))
@@ -55,6 +56,7 @@ SHOP = {item["id"]: item for item in json.loads((HERE / "content" / "shop.json")
 COURSE_LESSONS = {}
 for _lid, _m in LESSONS.items():
     COURSE_LESSONS.setdefault(_m["course"], []).append(_lid)
+BUILTIN_LESSONS = {k: dict(v) for k, v in LESSONS.items()}
 
 _write_lock = threading.Lock()
 _login_lock = threading.Lock()
@@ -89,6 +91,7 @@ def init_db():
     PHOTO_DIR.mkdir(parents=True, exist_ok=True)
     with db() as conn:
         conn.execute("PRAGMA journal_mode=WAL")
+        platform_api.init(conn)
         conn.executescript("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -635,6 +638,10 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/me":
                 return self.send_json(200, {"user": public_user(user)})
 
+            got = platform_api.handle_get(conn, user, path, school_key(user), LESSONS, COURSE_LESSONS)
+            if got is not None:
+                return self.send_json(*got)
+
             if path == "/api/exams":
                 exams = conn.execute("SELECT * FROM exams WHERE user_id=?", (user["id"],)).fetchall()
                 certs = conn.execute("SELECT * FROM certs WHERE user_id=?", (user["id"],)).fetchall()
@@ -741,9 +748,22 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         path = self.path.split("?")[0]
         photo_route = path in ("/api/photo", "/api/register")
-        data = self.read_json(MAX_PHOTO_BODY if photo_route else MAX_BODY)
+        limit = platform_api.MAX_BOOK if path == "/api/teacher/books/upload" else \
+            MAX_PHOTO_BODY if photo_route else 400_000 if "/lessons/" in path or path in platform_api.AI_PATHS else MAX_BODY
+        data = self.read_json(limit)
         if data is None:
             return self.send_json(400, {"error": "bad_json"})
+
+        if path in platform_api.AI_PATHS:
+            # AI uzoq ishlaydi — bazani qulflamasdan / AI долго — без блокировки базы
+            with _write_lock, db() as conn:
+                user = self.current_user(conn)
+                if user is None:
+                    return self.send_json(401, {"error": "auth"})
+                job = platform_api.ai_prepare(conn, user, path, data, school_key(user))
+            if job[0] != "job":
+                return self.send_json(*job)
+            return self.send_json(*platform_api.ai_run(job))
 
         if path == "/api/run":
             if not RUN_ENABLED:
@@ -808,6 +828,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(403, {"error": "forbidden"})
             if path.startswith("/api/admin/") and user["role"] != "admin":
                 return self.send_json(403, {"error": "forbidden"})
+
+            res = platform_api.handle(conn, user, path, data, school_key(user), BUILTIN_LESSONS, LESSONS, COURSE_LESSONS)
+            if res is not None:
+                return self.send_json(*res)
 
             def reply(new_state, extra=None):
                 save_state(conn, user["id"], old, new_state)
@@ -1079,6 +1103,8 @@ def main():
         # Если копию не прочитать — останавливаемся, чтобы не затереть старые данные.
         raise SystemExit(f"ERROR: Supabase zaxirasini o‘qib bo‘lmadi / не удалось прочитать копию: {e}")
     init_db()
+    with db() as conn:
+        platform_api.rebuild(conn, BUILTIN_LESSONS, LESSONS, COURSE_LESSONS)
     load_photo_ids()
     status = ensure_teacher(args.teacher_password)
     ip = lan_ip()

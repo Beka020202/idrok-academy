@@ -1,1 +1,3 @@
 # Faqat Python standart kutubxonasi kerak / нужны только стандартные модули Python
+# Kitoblar (PDF) uchun / для книг (PDF):
+pypdf>=4

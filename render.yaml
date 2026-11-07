@@ -27,6 +27,9 @@ services:
     envVars:
       - key: TEACHER_PASSWORD
         sync: false
+      # Bepul AI (Google AI Studio → Get API key) / бесплатный AI
+      - key: GEMINI_API_KEY
+        sync: false
       - key: KODLA_DB_PATH
         value: /tmp/kodla/kodla.db
       - key: KODLA_DISABLE_RUN
