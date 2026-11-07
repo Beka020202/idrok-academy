@@ -215,10 +215,6 @@ class _AuthScreenState extends State<AuthScreen> {
           expand: true,
           icon: Icons.arrow_forward_rounded,
         ),
-        if (!reg) ...[
-          const SizedBox(height: S.x4),
-          ContactAdminCard(text: s.t('forgot_pw')),
-        ],
       ]),
     );
 
@@ -313,6 +309,8 @@ class _AuthScreenState extends State<AuthScreen> {
                       icon: Icons.wifi_off_rounded,
                       expand: true,
                     ),
+                    const SizedBox(height: S.x5),
+                    ContactAdminCard(text: s.t('forgot_pw')),
                     ],
                   ],
                 ),
