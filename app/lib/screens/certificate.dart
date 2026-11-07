@@ -59,14 +59,18 @@ class CertText {
 /// Shriftlar ilova ichidan / шрифты из приложения.
 class CertFonts {
   final pw.Font body, bold, display;
-  const CertFonts(this.body, this.bold, this.display);
+  final Uint8List? logo; // Idrok Academy belgisi / логотип
+  const CertFonts(this.body, this.bold, this.display, {this.logo});
 
   static Future<CertFonts> load() async => CertFonts(
         pw.Font.ttf(await rootBundle.load('assets/fonts/Manrope-600.ttf')),
         pw.Font.ttf(await rootBundle.load('assets/fonts/Manrope-800.ttf')),
         pw.Font.ttf(await rootBundle.load('assets/fonts/Unbounded-800.ttf')),
+        logo: (await rootBundle.load(kCertLogo)).buffer.asUint8List(),
       );
 }
+
+const String kCertLogo = 'assets/icon/icon.png';
 
 PdfColor _pc(Color c) => PdfColor.fromInt(c.toARGB32());
 
@@ -75,6 +79,7 @@ Future<Uint8List> buildCertificatePdf(CertText t, CertFonts f) {
   pw.TextStyle st(double size, {pw.Font? font, Color color = _navy, double spacing = 0}) =>
       pw.TextStyle(font: font ?? f.body, fontSize: size, color: _pc(color), letterSpacing: spacing);
   const grey = Color(0xFF5B6475);
+  final logo = f.logo == null ? null : pw.MemoryImage(f.logo!);
 
   doc.addPage(pw.Page(
     pageFormat: const PdfPageFormat(_w, _h),
@@ -105,6 +110,12 @@ Future<Uint8List> buildCertificatePdf(CertText t, CertFonts f) {
           ),
         ),
       ),
+      if (logo != null)
+        pw.Positioned(
+          right: 150,
+          top: 70,
+          child: pw.Opacity(opacity: 0.07, child: pw.Image(logo, width: 250, height: 250)),
+        ),
       pw.Positioned(
         left: 50,
         top: 24,
@@ -114,6 +125,14 @@ Future<Uint8List> buildCertificatePdf(CertText t, CertFonts f) {
           padding: const pw.EdgeInsets.fromLTRB(44, 34, 44, 30),
           child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
             pw.Row(children: [
+              if (logo != null) ...[
+                pw.ClipRRect(
+                  horizontalRadius: 9,
+                  verticalRadius: 9,
+                  child: pw.Image(logo, width: 38, height: 38),
+                ),
+                pw.SizedBox(width: 10),
+              ],
               pw.Text('IDROK ACADEMY', style: st(13, font: f.display, color: _blue, spacing: 1.5)),
               pw.Spacer(),
               pw.Text('ID: ${t.id}', style: st(11, font: f.bold, color: grey)),
@@ -203,6 +222,11 @@ class CertificateView extends StatelessWidget {
                   ),
                 ),
                 Positioned(
+                  right: 150,
+                  top: 70,
+                  child: Opacity(opacity: 0.07, child: Image.asset(kCertLogo, width: 250, height: 250)),
+                ),
+                Positioned(
                   left: 50,
                   top: 24,
                   right: 24,
@@ -215,6 +239,11 @@ class CertificateView extends StatelessWidget {
                     ),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Row(children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(9),
+                          child: Image.asset(kCertLogo, width: 38, height: 38),
+                        ),
+                        const SizedBox(width: 10),
                         Text('IDROK ACADEMY', style: st(13, font: kDisplay, weight: w8, color: _blue, spacing: 1.5)),
                         const Spacer(),
                         Text('ID: ${t.id}', style: st(11, weight: w8, color: grey)),

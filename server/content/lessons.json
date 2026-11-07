@@ -29,6 +29,21 @@
   "xp": 20,
   "leagues": null
  },
+ "html7": {
+  "course": "html",
+  "xp": 20,
+  "leagues": null
+ },
+ "html8": {
+  "course": "html",
+  "xp": 20,
+  "leagues": null
+ },
+ "html9": {
+  "course": "html",
+  "xp": 20,
+  "leagues": null
+ },
  "css1": {
   "course": "css",
   "xp": 20,
@@ -55,6 +70,21 @@
   "leagues": null
  },
  "css6": {
+  "course": "css",
+  "xp": 20,
+  "leagues": null
+ },
+ "css7": {
+  "course": "css",
+  "xp": 20,
+  "leagues": null
+ },
+ "css8": {
+  "course": "css",
+  "xp": 20,
+  "leagues": null
+ },
+ "css9": {
   "course": "css",
   "xp": 20,
   "leagues": null
@@ -89,6 +119,21 @@
   "xp": 20,
   "leagues": null
  },
+ "js7": {
+  "course": "js",
+  "xp": 20,
+  "leagues": null
+ },
+ "js8": {
+  "course": "js",
+  "xp": 20,
+  "leagues": null
+ },
+ "js9": {
+  "course": "js",
+  "xp": 20,
+  "leagues": null
+ },
  "py1": {
   "course": "py",
   "xp": 20,
@@ -115,6 +160,21 @@
   "leagues": null
  },
  "py6": {
+  "course": "py",
+  "xp": 20,
+  "leagues": null
+ },
+ "py7": {
+  "course": "py",
+  "xp": 20,
+  "leagues": null
+ },
+ "py8": {
+  "course": "py",
+  "xp": 20,
+  "leagues": null
+ },
+ "py9": {
   "course": "py",
   "xp": 20,
   "leagues": null

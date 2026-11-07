@@ -7,6 +7,7 @@ import '../main.dart' show AppLogo;
 import '../state.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'lessons_admin.dart' show ContactAdminCard;
 import 'profile_form.dart';
 
 /// Kirish / ro‘yxatdan o‘tish / вход и регистрация.
@@ -145,6 +146,8 @@ class _AuthScreenState extends State<AuthScreen> {
                           Expanded(child: Text(s.t('teacher_code_info'), style: AppType.footnote.copyWith(color: c.text))),
                         ]),
                       ),
+                      const SizedBox(height: S.x3),
+                      const ContactAdminCard(),
                       const SizedBox(height: S.x4),
                       AppTextField(
                         key: const ValueKey('f-code'),
@@ -212,6 +215,10 @@ class _AuthScreenState extends State<AuthScreen> {
           expand: true,
           icon: Icons.arrow_forward_rounded,
         ),
+        if (!reg) ...[
+          const SizedBox(height: S.x4),
+          ContactAdminCard(text: s.t('forgot_pw')),
+        ],
       ]),
     );
 

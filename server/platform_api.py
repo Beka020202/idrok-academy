@@ -181,7 +181,7 @@ def clean_step(st):
         return out
     # try
     task = _tr(st.get("task"), 500)
-    mode = st.get("mode") if st.get("mode") in ("html", "css", "js", "py") else "html"
+    mode = st.get("mode") if st.get("mode") in ("html", "css", "js", "py", "text") else "html"
     if not task:
         return None
     must = [x for x in (_s(m, 80).strip() for m in (st.get("must") or [])[:8]) if x]
@@ -278,6 +278,8 @@ STEP turlari:
 ANIM (animatsiya) turlari:
 - kod qadamma-qadam: {"kind":"trace","lang":"py|js","code":["qator1","qator2"],"frames":[{"line":0,"say":{"uz","ru"},"vars":{"x":"3"},"out":["chiqish"]},...]}
 - HTML/CSS sahifada paydo bo'lishi: {"kind":"render","lang":"html","code":["<h1>Salom</h1>","<p>Matn</p>"],"els":[{"tag":"h1","text":"Salom","line":0},{"tag":"p","text":"Matn","line":1,"style":{"color":"#0A6CFF"}}],"frames":[{"line":0,"reveal":1,"say":{"uz","ru"}},{"line":1,"reveal":2,"say":{"uz","ru"}}]}
+  render "tag" qiymatlari: h1 h2 h3 p a li img header main footer input button strong em mark hr label select; jadval: "th" (sarlavha qatori) va "tr" (oddiy qator), kataklar "|" bilan: "Fan | Baho"; "check"/"radio" (matn "*" bilan boshlansa — belgilangan); boshqa teg (div) — quti, style: color, bg, radius, border (rang), shadow ("1"), w (foiz), size, bold ("1"), align ("center").
+  CSS o'zgarishini ko'rsatish uchun kadrda "extra":{"styles":{"all":{"color":"#0A6CFF"}}} (kalit: all, klass nomi yoki "#id") yozish mumkin; bunda "reveal" barcha elementlar soniga teng bo'lsin.
 - suhbat (AI mavzulari uchun): {"kind":"chat","chat":[{"me":true,"text":{"uz","ru"}},{"me":false,"text":{"uz","ru"}}],"frames":[{"reveal":1,"say":{"uz","ru"}},{"reveal":2,"say":{"uz","ru"}}]}
 Qoidalar: matnlar O'zbek (lotin) va Rus tillarida, 10-15 yoshli o'quvchiga oddiy so'zlar bilan, hayotiy misol bilan.
 Dars tuzilishi: 1) nazariya (read) qisqa va tushunarli, 2) animatsiyali read (anim bilan, 3-8 kadr), 3) 3-5 ta savol (quiz/fill/order, har birida e - tushuntirish), 4) 1 ta amaliyot (try).
@@ -372,7 +374,7 @@ def ai_prepare(conn, user, path, data, school_key):
             prompt = f"Kurs: {course}. Daraja: {level}. Mavzu va tushuntirish:\n{topic}\nShu mavzuda dars tuz."
         kind, system = "lesson", LESSON_SCHEMA
     if not GEMINI_KEY:
-        return 503, {"error": "ai_off"}
+        return 502, {"error": "ai_off"}
     if not _usage_ok(conn, user["id"]):
         return 429, {"error": "ai_limit"}
     return ("job", kind, prompt, system, course, "school" if role == "teacher" else "global")
@@ -383,17 +385,17 @@ def ai_run(job, call=None):
     _, kind, prompt, system, course, scope = job
     res, err = (call or gemini)(prompt, system)
     if err:
-        return 503, {"error": err}
+        return 502, {"error": err}
     if kind == "test":
         if not isinstance(res, dict) or not isinstance(res.get("questions"), list):
-            return 503, {"error": "ai_error"}
+            return 502, {"error": "ai_error"}
         return 200, {"test": res}
     if isinstance(res, dict):
         res["course"] = course
         res.setdefault("xp", 20)
     lesson = clean_lesson(res, scope)
     if lesson is None:
-        return 503, {"error": "ai_error"}
+        return 502, {"error": "ai_error"}
     return 200, {"lesson": lesson}
 
 

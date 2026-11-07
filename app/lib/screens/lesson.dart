@@ -77,15 +77,29 @@ class LessonScreen extends StatefulWidget {
   final String? lessonId;
   final bool placement;
   final String? examCourse; // yakuniy imtihon / итоговый экзамен
+  final Lesson? custom; // ko‘rib chiqish / предпросмотр
+  final Course? customCourse;
   const LessonScreen({super.key, required String this.lessonId})
       : placement = false,
-        examCourse = null;
+        examCourse = null,
+        custom = null,
+        customCourse = null;
   const LessonScreen.placement({super.key})
       : lessonId = null,
         examCourse = null,
+        custom = null,
+        customCourse = null,
         placement = true;
   const LessonScreen.exam({super.key, required String this.examCourse})
       : lessonId = null,
+        custom = null,
+        customCourse = null,
+        placement = false;
+
+  /// Saqlanmagan darsni sinab ko‘rish (XP yo‘q) / попробовать несохранённый урок (без XP).
+  const LessonScreen.preview({super.key, required Lesson this.custom, required Course this.customCourse})
+      : lessonId = null,
+        examCourse = null,
         placement = false;
 
   @override
@@ -155,7 +169,10 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    if (_exam) {
+    if (widget.custom != null) {
+      lesson = widget.custom;
+      course = widget.customCourse;
+    } else if (_exam) {
       course = kCourses.firstWhere((x) => x.id == widget.examCourse);
     } else if (!widget.placement) {
       final e = kAllLessons[widget.lessonId]!;
@@ -1300,7 +1317,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
     }
 
     final r = result!;
-    final nx = s.nextLesson(course!);
+    final nx = lesson!.local ? null : s.nextLesson(course!);
     final acc = timedTotal == 0 ? 100 : (correctFirst * 100 / timedTotal).round();
 
     final extras = <Widget>[

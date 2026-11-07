@@ -24,13 +24,19 @@ class _AnimPlayerState extends State<AnimPlayer> {
   Timer? _timer;
 
   List<AnimFrame> get frames => widget.scene.frames;
-  AnimFrame get frame => frames[f];
+  AnimFrame get frame => frames[f.clamp(0, frames.length - 1).toInt()];
   bool get playing => _timer != null;
 
   @override
   void dispose() {
     _timer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant AnimPlayer old) {
+    super.didUpdateWidget(old);
+    if (f >= frames.length) f = frames.isEmpty ? 0 : frames.length - 1;
   }
 
   void _go(int to) {
@@ -75,81 +81,203 @@ class _AnimPlayerState extends State<AnimPlayer> {
       'grid' => _GridStage(scene: sc, frame: frame),
       _ => const SizedBox.shrink(),
     };
-    return Container(
+    final last = frames.length - 1;
+    final kindLabel = switch (sc.kind) {
+      'trace' => sc.lang == 'js' ? 'JavaScript' : 'Python',
+      'render' => sc.lang == 'css' ? 'CSS' : 'HTML',
+      'box' => 'CSS · box',
+      'flex' => 'Flexbox',
+      'learn' || 'grid' => 'AI',
+      'chat' => 'Chat',
+      _ => '',
+    };
+    return GestureDetector(
       key: const ValueKey('anim-player'),
-      decoration: BoxDecoration(
-        color: c.isDark ? c.surface : kWhite,
-        borderRadius: R.all(R.xl),
-        border: Border.all(color: c.hairline),
-        boxShadow: Shadows.card(c),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Padding(padding: const EdgeInsets.all(S.x3), child: stage),
-        // Izoh / пояснение
-        Container(
-          margin: const EdgeInsets.fromLTRB(S.x3, 0, S.x3, S.x3),
-          padding: const EdgeInsets.all(S.x3),
-          decoration: BoxDecoration(color: c.accentSoft, borderRadius: R.all(R.md)),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Icon(Icons.lightbulb_rounded, size: 18, color: c.accentText),
-            const SizedBox(width: S.x2),
-            Expanded(
-              child: AnimatedSwitcher(
-                duration: Motion.of(context, Motion.base),
-                transitionBuilder: (child, a) => FadeTransition(
-                  opacity: a,
-                  child: SlideTransition(position: Tween(begin: const Offset(0, 0.25), end: Offset.zero).animate(a), child: child),
-                ),
-                layoutBuilder: (cur, prev) => Stack(alignment: Alignment.topLeft, children: [...prev, if (cur != null) cur]),
-                child: Text(s.tr(frame.say),
-                    key: ValueKey(f), style: AppType.subhead.copyWith(color: c.text, fontWeight: w6)),
+      onHorizontalDragEnd: (d) {
+        final v = d.primaryVelocity ?? 0;
+        if (v < -250) _go(f + 1);
+        if (v > 250) _go(f - 1);
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: R.all(R.xxl),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: c.isDark ? const [Color(0xFF1C1F2B), Color(0xFF15171F)] : const [Color(0xFFFFFFFF), Color(0xFFF6F8FC)],
+          ),
+          border: Border.all(color: c.isDark ? const Color(0x1AFFFFFF) : const Color(0x0F0A1226)),
+          boxShadow: [
+            BoxShadow(color: c.accent.withAlpha(c.isDark ? 0x22 : 0x18), blurRadius: 30, offset: const Offset(0, 14)),
+            ...Shadows.card(c),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          // Sarlavha qatori / строка заголовка
+          Padding(
+            padding: const EdgeInsets.fromLTRB(S.x4, S.x3, S.x3, 0),
+            child: Row(children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                decoration: BoxDecoration(color: c.accentSoft, borderRadius: R.all(R.pill)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.auto_awesome_rounded, size: 12, color: c.accentText),
+                  const SizedBox(width: 4),
+                  Text(kindLabel.toUpperCase(), style: AppType.overline.copyWith(color: c.accentText, fontSize: 10)),
+                ]),
               ),
+              const Spacer(),
+              AnimatedSwitcher(
+                duration: Motion.of(context, Motion.fast),
+                child: Text('${f + 1} / ${frames.length}',
+                    key: ValueKey('n$f'),
+                    style: AppType.caption.copyWith(color: c.text2, fontFeatures: const [FontFeature.tabularFigures()])),
+              ),
+            ]),
+          ),
+          Padding(padding: const EdgeInsets.fromLTRB(S.x3, S.x3, S.x3, S.x3), child: stage),
+          // Izoh / пояснение
+          Container(
+            margin: const EdgeInsets.fromLTRB(S.x3, 0, S.x3, S.x2),
+            padding: const EdgeInsets.fromLTRB(S.x3, S.x3, S.x4, S.x3),
+            decoration: BoxDecoration(
+              color: c.isDark ? const Color(0x14FFFFFF) : const Color(0xFFF1F5FF),
+              borderRadius: R.all(R.lg),
+              border: Border.all(color: c.accent.withAlpha(0x22)),
             ),
-          ]),
-        ),
-        // Boshqaruv / управление
-        Padding(
-          padding: const EdgeInsets.fromLTRB(S.x2, 0, S.x2, S.x2),
-          child: Row(children: [
-            IconButton(
-              key: const ValueKey('anim-prev'),
-              tooltip: s.t('back'),
-              onPressed: f > 0 ? () => _go(f - 1) : null,
-              icon: Icon(Icons.chevron_left_rounded, color: f > 0 ? c.text : c.text3),
-            ),
-            Expanded(
-              child: frames.length <= 12
-                  ? Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                      for (var k = 0; k < frames.length; k++)
-                        AnimatedContainer(
-                          duration: Motion.of(context, Motion.fast),
-                          margin: const EdgeInsets.symmetric(horizontal: 3),
-                          width: k == f ? 18 : 7,
-                          height: 7,
-                          decoration: BoxDecoration(
-                            color: k <= f ? c.accent : c.hairlineStrong,
-                            borderRadius: R.all(R.pill),
-                          ),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              AnimatedContainer(
+                duration: Motion.of(context, Motion.base),
+                curve: Motion.pop,
+                width: 24,
+                height: 24,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(shape: BoxShape.circle, gradient: c.accentGradient),
+                child: Text('${f + 1}', style: AppType.caption.copyWith(color: kWhite, fontSize: 11)),
+              ),
+              const SizedBox(width: S.x3),
+              Expanded(
+                child: AnimatedSize(
+                  duration: Motion.of(context, Motion.base),
+                  curve: Motion.curve,
+                  alignment: Alignment.topLeft,
+                  child: AnimatedSwitcher(
+                    duration: Motion.of(context, Motion.base),
+                    switchInCurve: Motion.curve,
+                    transitionBuilder: (child, a) => FadeTransition(
+                      opacity: a,
+                      child: SlideTransition(
+                          position: Tween(begin: const Offset(0.06, 0), end: Offset.zero).animate(a), child: child),
+                    ),
+                    layoutBuilder: (cur, prev) => Stack(alignment: Alignment.topLeft, children: [...prev, if (cur != null) cur]),
+                    child: Text(s.tr(frame.say),
+                        key: ValueKey(f), style: AppType.subhead.copyWith(color: c.text, fontWeight: w6, height: 1.45)),
+                  ),
+                ),
+              ),
+            ]),
+          ),
+          // Jarayon / прогресс
+          Padding(
+            padding: const EdgeInsets.fromLTRB(S.x4, S.x2, S.x4, 0),
+            child: Row(children: [
+              for (var k = 0; k < frames.length; k++) ...[
+                if (k > 0) const SizedBox(width: 4),
+                Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => _go(k),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: AnimatedContainer(
+                        duration: Motion.of(context, Motion.base),
+                        curve: Motion.curve,
+                        height: k == f ? 5 : 4,
+                        decoration: BoxDecoration(
+                          gradient: k <= f ? c.accentGradient : null,
+                          color: k <= f ? null : (c.isDark ? const Color(0x1FFFFFFF) : const Color(0x140A1226)),
+                          borderRadius: R.all(R.pill),
                         ),
-                    ])
-                  : AppProgress((f + 1) / frames.length, height: 6, gradient: c.accentGradient),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ]),
+          ),
+          // Boshqaruv / управление
+          Padding(
+            padding: const EdgeInsets.fromLTRB(S.x3, S.x1, S.x3, S.x3),
+            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              _RoundBtn(
+                key: const ValueKey('anim-prev'),
+                icon: Icons.chevron_left_rounded,
+                tooltip: s.t('back'),
+                onTap: f > 0 ? () => _go(f - 1) : null,
+              ),
+              const SizedBox(width: S.x5),
+              _RoundBtn(
+                key: const ValueKey('anim-play'),
+                icon: playing ? Icons.pause_rounded : (f >= last ? Icons.replay_rounded : Icons.play_arrow_rounded),
+                tooltip: s.t('anim_play'),
+                big: true,
+                onTap: _toggle,
+              ),
+              const SizedBox(width: S.x5),
+              _RoundBtn(
+                key: const ValueKey('anim-next'),
+                icon: Icons.chevron_right_rounded,
+                tooltip: s.t('next'),
+                onTap: f < last ? () => _go(f + 1) : null,
+              ),
+            ]),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+/// iOS uslubidagi dumaloq tugma / круглая кнопка в стиле iOS.
+class _RoundBtn extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onTap;
+  final bool big;
+  const _RoundBtn({super.key, required this.icon, required this.tooltip, this.onTap, this.big = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = colorsOf(context);
+    final size = big ? 52.0 : 40.0;
+    final on = onTap != null;
+    return Tooltip(
+      message: tooltip,
+      child: Pressable(
+        onTap: onTap,
+        scale: 0.9,
+        semanticLabel: tooltip,
+        child: AnimatedOpacity(
+          duration: Motion.of(context, Motion.fast),
+          opacity: on ? 1 : 0.35,
+          child: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: big ? c.accentGradient : null,
+              color: big ? null : (c.isDark ? const Color(0x1AFFFFFF) : const Color(0xFFEFF2F8)),
+              boxShadow: big ? Shadows.glow(c.accent, c, strength: 0.7) : null,
             ),
-            IconButton(
-              key: const ValueKey('anim-play'),
-              tooltip: s.t('anim_play'),
-              onPressed: _toggle,
-              icon: Icon(playing ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded, color: c.accent, size: 30),
+            child: AnimatedSwitcher(
+              duration: Motion.of(context, Motion.fast),
+              transitionBuilder: (child, a) => ScaleTransition(scale: a, child: child),
+              child: Icon(icon, key: ValueKey(icon), size: big ? 28 : 24, color: big ? kWhite : c.text),
             ),
-            IconButton(
-              key: const ValueKey('anim-next'),
-              tooltip: s.t('next'),
-              onPressed: f < frames.length - 1 ? () => _go(f + 1) : null,
-              icon: Icon(Icons.chevron_right_rounded, color: f < frames.length - 1 ? c.text : c.text3),
-            ),
-          ]),
+          ),
         ),
-      ]),
+      ),
     );
   }
 }
@@ -472,13 +600,78 @@ class _Element extends StatelessWidget {
             child: Text(el.text, style: base(10, w7).copyWith(color: kWhite)),
           ),
         ),
+      'th' || 'tr' => Container(
+          decoration: BoxDecoration(
+            color: el.tag == 'th' ? const Color(0xFF0A6CFF) : const Color(0xFFF4F7FC),
+            border: Border.all(color: const Color(0xFFD5DCE6), width: 0.6),
+          ),
+          child: Row(children: [
+            for (final cell in el.text.split('|'))
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                  child: Text(cell.trim(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: base(9.5, el.tag == 'th' ? w8 : w4).copyWith(color: el.tag == 'th' ? kWhite : (color ?? ink))),
+                ),
+              ),
+          ]),
+        ),
+      'strong' => Text(el.text, style: base(10.5, w8)),
+      'em' => Text(el.text, style: base(10.5, w4).copyWith(fontStyle: FontStyle.italic)),
+      'mark' => Align(
+          alignment: Alignment.centerLeft,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+            color: const Color(0xFFFFE45C),
+            child: Text(el.text, style: base(10.5, w6)),
+          ),
+        ),
+      'hr' => Container(height: 1.5, margin: const EdgeInsets.symmetric(vertical: 3), color: const Color(0xFFCDD5E1)),
+      'check' || 'radio' => Row(children: [
+          Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(
+              shape: el.tag == 'radio' ? BoxShape.circle : BoxShape.rectangle,
+              borderRadius: el.tag == 'radio' ? null : BorderRadius.circular(3),
+              color: el.text.startsWith('*') ? const Color(0xFF0A6CFF) : kWhite,
+              border: Border.all(color: const Color(0xFF0A6CFF), width: 1.4),
+            ),
+            child: el.text.startsWith('*') ? const Icon(Icons.check_rounded, size: 9, color: kWhite) : null,
+          ),
+          const SizedBox(width: 6),
+          Expanded(child: Text(el.text.replaceFirst('*', ''), style: base(10, w4))),
+        ]),
+      'select' => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+          decoration: BoxDecoration(
+              border: Border.all(color: const Color(0xFFB8C2D3)), borderRadius: BorderRadius.circular(6)),
+          child: Row(children: [
+            Expanded(child: Text(el.text, style: base(10, w6))),
+            const Icon(Icons.expand_more_rounded, size: 14, color: Color(0xFF5B6475)),
+          ]),
+        ),
+      'label' => Text(el.text, style: base(9, w7).copyWith(color: color ?? const Color(0xFF5B6475))),
       _ => AnimatedContainer(
           duration: Motion.of(context, Motion.base),
-          padding: const EdgeInsets.all(8),
+          curve: Motion.curve,
+          width: style['w'] == null ? null : 128 * ((double.tryParse(style['w']!) ?? 100) / 100),
+          padding: EdgeInsets.all(double.tryParse(style['pad'] ?? '') ?? 8),
+          transform: Matrix4.diagonal3Values(double.tryParse(style['scale'] ?? '') ?? 1, double.tryParse(style['scale'] ?? '') ?? 1, 1),
+          transformAlignment: Alignment.center,
           decoration: BoxDecoration(
             color: hex(style['bg']) ?? const Color(0x00000000),
             borderRadius: BorderRadius.circular((double.tryParse(style['radius'] ?? '') ?? 0) / 2),
-            border: style['bg'] == null ? Border.all(color: const Color(0xFFD5DCE6)) : null,
+            border: style['border'] != null
+                ? Border.all(color: hex(style['border'])!, width: 2)
+                : style['bg'] == null
+                    ? Border.all(color: const Color(0xFFD5DCE6))
+                    : null,
+            boxShadow: style['shadow'] == '1'
+                ? const [BoxShadow(color: Color(0x400A1226), blurRadius: 12, offset: Offset(0, 6))]
+                : null,
           ),
           child: Text(el.text, textAlign: align, style: base(11, w6)),
         ),

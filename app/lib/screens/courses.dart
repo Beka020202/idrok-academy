@@ -8,6 +8,7 @@ import '../widgets.dart';
 import 'cards.dart' show ProjectCard;
 import 'certificate.dart';
 import 'lesson.dart';
+import 'lessons_admin.dart' show SchoolLessonsSection;
 import 'teacher_tests.dart' show SchoolTestsSection;
 
 /// 2. Kurs xaritasi / карта курса.
@@ -26,6 +27,7 @@ class CoursesTab extends StatelessWidget {
         SectionHeader(s.t('course_path')),
         _Path(course: course),
         _Chest(course: course),
+        if ((kSchoolLessons[course.id] ?? const []).isNotEmpty) SchoolLessonsSection(course: course),
         if (!s.isStaff) ExamCard(course: course),
         ProjectCard(course: course),
         const SchoolTestsSection(),

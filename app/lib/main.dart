@@ -17,6 +17,7 @@ import 'screens/shop.dart';
 import 'screens/teacher.dart';
 import 'screens/teacher_tests.dart';
 import 'screens/admin.dart';
+import 'screens/lessons_admin.dart';
 import 'state.dart';
 import 'theme.dart';
 import 'widgets.dart';
@@ -240,6 +241,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       'tests' => const TeacherTestsTab(),
       'admin' => const AdminCodesTab(),
       'orders' => const AdminOrdersTab(),
+      'dash' => const AdminDashTab(),
+      'lessons' => const LessonsTab(),
       _ => const HomeTab(),
     };
 
@@ -253,6 +256,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       'tests': (Icons.assignment_rounded, s.t('tests_tab')),
       'admin': (Icons.key_rounded, s.t('codes_tab')),
       'orders': (Icons.redeem_rounded, s.t('orders_tab')),
+      'dash': (Icons.space_dashboard_rounded, s.t('dash_tab')),
+      'lessons': (Icons.menu_book_rounded, s.t('les_tab')),
     };
     final sel = tabs.contains(tab) ? tabs.indexOf(tab) : tabs.length - 1;
 

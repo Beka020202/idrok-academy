@@ -209,6 +209,9 @@ class Lesson {
   final Tr title;
   final Set<String>? leagues; // null = hamma uchun / для всех
   final StepBuilder builder;
+
+  /// app — ilovada / встроенный, global — admin, school — ustoz (XP yo‘q), preview — ko‘rib chiqish.
+  final String source;
   const Lesson({
     required this.id,
     required this.courseId,
@@ -216,7 +219,12 @@ class Lesson {
     required this.title,
     required this.builder,
     this.leagues,
+    this.source = 'app',
   });
+
+  /// Natija faqat telefonda (serverga yuborilmaydi, XP yo‘q).
+  /// Результат только на телефоне (не отправляется на сервер, без XP).
+  bool get local => source == 'school' || source == 'preview';
 
   /// Yangi urinish uchun bosqichlar / шаги для новой попытки.
   List<LessonStep> build(int seed, int difficulty) => builder(Gen(seed, difficulty));
@@ -227,6 +235,8 @@ class Lesson {
 class Course {
   final String id, tag, color;
   final Tr name, sub;
+
+  /// O‘zgaruvchan: server darslari qo‘shiladi / изменяемый: добавляются уроки с сервера.
   final List<Lesson> lessons;
   const Course(
       {required this.id, required this.tag, required this.color, required this.name, required this.sub, required this.lessons});

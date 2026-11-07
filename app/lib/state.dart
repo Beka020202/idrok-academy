@@ -96,6 +96,11 @@ class AppState extends ChangeNotifier {
   Map<String, int> examLast = {};
   int _skew = 0; // server vaqti − telefon vaqti / время сервера − время телефона
 
+  /// Server darslari (kesh) va maktab darslarining natijasi / уроки с сервера (кэш) и пройденные уроки школы.
+  List<Object?> contentRaw = [];
+  Set<String> schoolDone = {};
+  bool aiOn = false;
+
   /// O‘z rasmim (kesh) / моё фото (кэш)
   Uint8List? myPhoto;
 
@@ -184,9 +189,9 @@ class AppState extends ChangeNotifier {
   }
 
   List<String> get tabs => isAdmin
-      ? ['admin', 'orders', 'teacher', 'ranking', 'profile']
+      ? ['dash', 'lessons', 'admin', 'orders', 'profile']
       : isTeacher
-          ? ['teacher', 'tests', 'ranking', 'profile']
+          ? ['teacher', 'lessons', 'tests', 'ranking', 'profile']
           : ['home', 'ranking', 'profile'];
 
   /// Yuqoridan chiquvchi bildirishnoma / всплывающее уведомление сверху.
@@ -207,12 +212,14 @@ class AppState extends ChangeNotifier {
     }
     api = Api(server, token: token.isEmpty ? null : token);
     st = normalize(offlineState);
+    applyContent(contentRaw);
     await loadShop();
     if (mode == 'online' && token.isNotEmpty && !testMode) {
       try {
         final res = await api.call('/api/me');
         _setUser(res['user']);
         loadExams();
+        loadContent();
       } on ApiError catch (e) {
         user = null;
         if (e.code == 'auth') {
@@ -283,6 +290,8 @@ class AppState extends ChangeNotifier {
         myPhoto = base64Decode(ph);
       } catch (_) {}
     }
+    contentRaw = j['content'] is List ? List<Object?>.from(j['content'] as List) : [];
+    schoolDone = j['school_done'] is List ? {for (final x in j['school_done'] as List) '$x'} : {};
     final os = j['offline_state'];
     offlineState = os is Map ? Map<String, dynamic>.from(os) : {};
   }
@@ -309,6 +318,8 @@ class AppState extends ChangeNotifier {
       'certs': [for (final ce in certs.values) ce.toJson()],
       'exam_last': examLast,
       'photo': myPhoto == null ? '' : base64Encode(myPhoto!),
+      'content': contentRaw,
+      'school_done': schoolDone.toList(),
     };
     try {
       _sp ??= await SharedPreferences.getInstance();
@@ -381,6 +392,7 @@ class AppState extends ChangeNotifier {
       examLast = {};
       await savePrefs();
       loadExams();
+      loadContent();
       return null;
     } on ApiError catch (e) {
       return t(switch (e.code) {
@@ -421,6 +433,8 @@ class AppState extends ChangeNotifier {
     bootError = '';
     st = normalize(offlineState);
     tab = 'home';
+    contentRaw = [];
+    applyContent(contentRaw);
     await savePrefs();
     notifyListeners();
   }
@@ -557,6 +571,10 @@ class AppState extends ChangeNotifier {
   /// Test bekor qilindi (ilovadan chiqildi) / тест отменён (вышли из приложения).
   Future<void> cancelLessonTest(Lesson l) async {
     pendingNotice = t('test_cancelled');
+    if (l.local) {
+      notifyListeners();
+      return;
+    }
     await _serverOrLocal('/api/cancel', {'lesson_id': l.id}, () {
       st = cancelTest(st, l.id);
       return {};
@@ -582,6 +600,13 @@ class AppState extends ChangeNotifier {
   /// null — saqlab bo‘lmadi / не удалось сохранить.
   Future<LessonResult?> finishLesson(Lesson l,
       {required bool perfect, required int bestCombo, required int correct, required int total, required double timeShare}) async {
+    if (l.local) {
+      // Maktab darsi yoki ko‘rib chiqish: XP yo‘q / урок школы или просмотр: без XP
+      final first = l.source == 'school' && schoolDone.add(l.id);
+      if (first) await savePrefs();
+      notifyListeners();
+      return LessonResult(xp: 0, first: first, perfect: perfect, levelUp: false, level: levelOf(st.xpTotal));
+    }
     final res = await _serverOrLocal('/api/complete', {
       'lesson_id': l.id,
       'perfect': perfect,
@@ -600,6 +625,77 @@ class AppState extends ChangeNotifier {
     if (res == null) return null;
     return LessonResult.fromJson(res['result']);
   }
+
+  // ---------------------------------------------------------------- server darslari / уроки с сервера
+  Future<void> loadContent() async {
+    if (!online || testMode) return;
+    try {
+      final res = await api.call('/api/content');
+      contentRaw = res['lessons'] is List ? List<Object?>.from(res['lessons'] as List) : [];
+      aiOn = res['ai'] == true;
+      applyContent(contentRaw);
+      await savePrefs();
+      notifyListeners();
+    } on ApiError {
+      // kesh qoladi / остаётся кэш
+    }
+  }
+
+  /// Darsni saqlash (admin — hamma uchun, ustoz — o‘z maktabi uchun). Natija: id yoki null.
+  /// Сохранить урок (админ — для всех, учитель — для своей школы). Результат: id или null.
+  Future<String?> saveLesson(String? id, Map<String, Object?> lesson) async {
+    try {
+      final res = await api.call(isAdmin ? '/api/admin/lessons/save' : '/api/teacher/lessons/save', {
+        if (id != null) 'id': id,
+        'lesson': lesson,
+      });
+      await loadContent();
+      return '${res['id']}';
+    } on ApiError catch (e) {
+      toast(e.code == 'lesson' ? t('les_bad') : e.code == 'conn' ? t('err_conn') : t('error'), icon: Icons.error_outline_rounded);
+      return null;
+    }
+  }
+
+  Future<bool> lessonAction(String action, String id, {bool hidden = false}) async {
+    try {
+      final base = isAdmin ? '/api/admin/lessons/' : '/api/teacher/lessons/';
+      await api.call('$base$action', {'id': id, if (action == 'hide') 'hidden': hidden});
+      await loadContent();
+      return true;
+    } on ApiError catch (e) {
+      toast(e.code == 'conn' ? t('err_conn') : t('error'), icon: Icons.cloud_off_rounded);
+      return false;
+    }
+  }
+
+  /// AI so‘rovi xatosi matni / текст ошибки AI-запроса.
+  String aiError(String code) => switch (code) {
+        'ai_off' => t('ai_off'),
+        'ai_limit' => t('ai_limit'),
+        'ai_busy' => t('ai_busy'),
+        'pdf_scan' => t('pdf_scan'),
+        'pdf' => t('pdf_bad'),
+        'topic' => t('ai_topic'),
+        'conn' || 'busy' => t('err_conn'),
+        _ => t('ai_fail'),
+      };
+
+  /// AI bilan dars (yangi yoki o‘zgartirish). Xato bo‘lsa — (null, matn).
+  /// Урок с AI (новый или правка). При ошибке — (null, текст).
+  Future<(Map<String, dynamic>?, String)> aiLesson(Map<String, Object?> body, {String path = '/api/ai/lesson'}) async {
+    try {
+      final res = await api.call(path, body, const Duration(seconds: 150));
+      final l = res['lesson'];
+      if (l is Map) return (Map<String, dynamic>.from(l), '');
+      return (null, t('ai_fail'));
+    } on ApiError catch (e) {
+      return (null, aiError(e.code));
+    }
+  }
+
+  Future<Map<String, dynamic>> staffCall(String path, [Map<String, Object?>? body, Duration? timeout]) =>
+      api.call(path, body, timeout);
 
   // ---------------------------------------------------------------- do‘kon / магазин
   /// Sotib olish (faqat onlayn — haqiqiy sovg‘alar) / покупка (только онлайн — реальные призы).

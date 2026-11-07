@@ -2,6 +2,7 @@
 // Анимированный шаг для каждого урока (ставится после теории).
 import 'anim.dart';
 import 'model.dart';
+import 'more.dart' show kMoreScenes;
 
 typedef SceneDef = (Tr h, Tr p, AnimScene Function(Gen g));
 
@@ -241,4 +242,5 @@ final Map<String, SceneDef> kScenes = {
           ..step(4, const Tr('Millionlab shunday neyron birga — bu neyron tarmoq!', 'Миллионы таких нейронов вместе — это нейросеть!'), print: 1);
         return t.scene();
       }),
+  ...kMoreScenes,
 };

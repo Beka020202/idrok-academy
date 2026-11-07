@@ -363,7 +363,8 @@ void main() {
       expect(t.uzLine, contains('Python'));
       expect(t.link, 'kodla-api.onrender.com/c/IDR-AB12-CD34');
       pw.Font font(String f) => pw.Font.ttf(ByteData.sublistView(File('assets/fonts/$f.ttf').readAsBytesSync()));
-      final bytes = await buildCertificatePdf(t, CertFonts(font('Manrope-600'), font('Manrope-800'), font('Unbounded-800')));
+      final bytes = await buildCertificatePdf(t, CertFonts(font('Manrope-600'), font('Manrope-800'), font('Unbounded-800'),
+          logo: File('assets/icon/icon.png').readAsBytesSync()));
       expect(String.fromCharCodes(bytes.take(4)), '%PDF');
       expect(bytes.length, greaterThan(5000));
     });
