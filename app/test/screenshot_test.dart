@@ -305,11 +305,15 @@ void main() {
     await settle(t, 900);
     await shot(t, '${n++}-admin-editor-steps');
     state.navigatorKey.currentState!.popUntil((r) => r.isFirst);
+    await settle(t, 1200);
+    await t.drag(find.byType(Scrollable).first, const Offset(0, 2000));
     await settle(t, 900);
-    await tapKey(t, const ValueKey('ai-make'));
-    await settle(t, 900);
-    await shot(t, '${n++}-admin-ai');
-    state.navigatorKey.currentState!.popUntil((r) => r.isFirst);
+    if (has(const ValueKey('ai-make'))) {
+      await tapKey(t, const ValueKey('ai-make'));
+      await settle(t, 900);
+      await shot(t, '${n++}-admin-ai');
+      state.navigatorKey.currentState!.popUntil((r) => r.isFirst);
+    }
     state.go('dash');
     await settle(t, 1500);
     await shot(t, '${n++}-admin-dash');

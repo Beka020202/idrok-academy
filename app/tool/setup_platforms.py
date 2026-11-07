@@ -189,6 +189,58 @@ def patch_gradle(root=APP):
     return True
 
 
+ROOT_GRADLE_MARK = "idrok: plugin compileSdk"
+
+
+def patch_root_gradle(root=APP):
+    """Eski plaginlar (file_picker) uchun compileSdk 36 / compileSdk 36 для старых плагинов (file_picker)."""
+    kts = root / "android" / "build.gradle.kts"
+    groovy = root / "android" / "build.gradle"
+    f = kts if kts.exists() else groovy
+    if not f.exists():
+        print("! android/build.gradle topilmadi / не найден")
+        return False
+    src = f.read_text(encoding="utf-8")
+    if ROOT_GRADLE_MARK in src:
+        return True
+    if f == kts:
+        block = (
+            "// " + ROOT_GRADLE_MARK + "\n"
+            "subprojects {\n"
+            "    if (name != \"app\") {\n"
+            "        afterEvaluate {\n"
+            "            val ext = extensions.findByName(\"android\")\n"
+            "            if (ext != null) {\n"
+            "                try {\n"
+            "                    ext.javaClass.getMethod(\"setCompileSdk\", java.lang.Integer::class.java).invoke(ext, 36)\n"
+            "                } catch (e: Exception) {\n"
+            "                    try {\n"
+            "                        ext.javaClass.getMethod(\"compileSdkVersion\", Int::class.javaPrimitiveType).invoke(ext, 36)\n"
+            "                    } catch (e2: Exception) {\n"
+            "                        println(\"compileSdk patch skipped for $name\")\n"
+            "                    }\n"
+            "                }\n"
+            "            }\n"
+            "        }\n"
+            "    }\n"
+            "}\n\n"
+        )
+    else:
+        block = (
+            "// " + ROOT_GRADLE_MARK + "\n"
+            "subprojects {\n"
+            "    if (name != 'app') {\n"
+            "        afterEvaluate { p -> if (p.hasProperty('android')) { p.android { compileSdkVersion 36 } } }\n"
+            "    }\n"
+            "}\n\n"
+        )
+    m = re.search(r"subprojects\s*\{\s*project\.evaluationDependsOn", src)
+    src = src[:m.start()] + block + src[m.start():] if m else block + src
+    f.write_text(src, encoding="utf-8")
+    print("✓ Gradle (plugin compileSdk 36)")
+    return True
+
+
 def patch_ios(root=APP):
     plist = root / "ios" / "Runner" / "Info.plist"
     if not plist.exists():
@@ -217,7 +269,7 @@ def patch_ios(root=APP):
 def main():
     if "--patch-only" not in sys.argv:
         run_flutter_create()
-    ok = patch_android() & patch_ios() & patch_main_activity() & patch_gradle()
+    ok = patch_android() & patch_ios() & patch_main_activity() & patch_gradle() & patch_root_gradle()
     if "--patch-only" not in sys.argv:
         make_icons()
     print("\nTayyor! Endi / Готово! Теперь:  flutter run   yoki / или   flutter build apk --release" if ok else "")
