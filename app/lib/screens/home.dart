@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../lessons.dart';
@@ -32,24 +34,302 @@ class HomeTab extends StatelessWidget {
     final name = s.displayName.split(' ').first;
     final questsDone = kQuests.where((q) => st.quests.claimed.contains(q.id)).length;
 
+    final h = DateTime.now().hour;
+    final greet = h < 5
+        ? const Tr('Xayrli tun', 'Доброй ночи')
+        : h < 12
+            ? const Tr('Xayrli tong', 'Доброе утро')
+            : h < 18
+                ? const Tr('Xayrli kun', 'Добрый день')
+                : const Tr('Xayrli kech', 'Добрый вечер');
     return TabPage(
-      title: '${s.t('hello')}${name.isNotEmpty ? ', $name' : ''}',
+      title: '${s.tr(greet)}${name.isNotEmpty ? ', $name' : ''} 👋',
       subtitle: s.leagueName,
       children: [
+        const _TodayCard(),
         _Continue(next: next),
-        GroupList([
-          GroupRow(
-            key: const ValueKey('quests-row'),
-            icon: Icons.task_alt_rounded,
-            color: const Color(0xFF34C759),
-            title: s.t('quests'),
-            value: '$questsDone/${kQuests.length}',
-            onTap: () => showAppSheet<void>(context, builder: (_) => const _Quests()),
-          ),
-        ]),
+        const _QuestStrip(),
         SectionHeader(s.t('courses')),
         const _CourseGrid(),
+        const _TipCard(),
       ],
+    );
+  }
+}
+
+// ------------------------------------------------------------ bugun: maqsad va seriya / сегодня: цель и серия
+class _TodayCard extends StatelessWidget {
+  const _TodayCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppScope.of(context);
+    final c = s.c, st = s.st;
+    final goal = (st.todayXp / kGoal).clamp(0.0, 1.0);
+    // haftalik chiziq / недельная полоска
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final monday = today.subtract(Duration(days: today.weekday - 1));
+    final last = DateTime.tryParse(st.lastDay);
+    bool lit(DateTime d) {
+      if (last == null || st.streak <= 0) return false;
+      final ld = DateTime(last.year, last.month, last.day);
+      final first = ld.subtract(Duration(days: st.streak - 1));
+      return !d.isBefore(first) && !d.isAfter(ld);
+    }
+    const days = [Tr('Du', 'Пн'), Tr('Se', 'Вт'), Tr('Ch', 'Ср'), Tr('Pa', 'Чт'), Tr('Ju', 'Пт'), Tr('Sh', 'Сб'), Tr('Ya', 'Вс')];
+    return Container(
+      key: const ValueKey('today-card'),
+      padding: const EdgeInsets.all(S.x5),
+      decoration: BoxDecoration(
+        color: c.surface,
+        borderRadius: R.all(R.xl),
+        border: Border.all(color: c.hairline),
+      ),
+      child: Column(children: [
+        Row(children: [
+          // kunlik maqsad halqasi / кольцо дневной цели
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: goal),
+            duration: const Duration(milliseconds: 1100),
+            curve: Curves.easeOutCubic,
+            builder: (_, v, __) => SizedBox(
+              width: 92,
+              height: 92,
+              child: CustomPaint(
+                painter: _RingPainter(v, c.surfaceAlt, const [Color(0xFF2EA6FF), Color(0xFF0A6CFF), Color(0xFF7A5CFF)]),
+                child: Center(
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    const Icon(Icons.bolt_rounded, color: Color(0xFFFFB800), size: 22),
+                    Text('${st.todayXp.clamp(0, 999)}', style: AppType.title3.copyWith(color: c.text, height: 1.0)),
+                    Text('/$kGoal XP', style: AppType.caption.copyWith(color: c.text2)),
+                  ]),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: S.x4),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(s.tr(goal >= 1 ? const Tr('Bugungi maqsad bajarildi! 🎉', 'Цель на сегодня выполнена! 🎉') : const Tr('Bugungi maqsad', 'Цель на сегодня')),
+                  style: AppType.headline.copyWith(color: c.text)),
+              const SizedBox(height: 4),
+              Text(
+                  goal >= 1
+                      ? s.tr(const Tr('Ertaga ham kel — seriya o‘sadi', 'Приходи завтра — серия вырастет'))
+                      : s.tr(Tr('Yana ${kGoal - st.todayXp} XP — va maqsad bajariladi', 'Ещё ${kGoal - st.todayXp} XP — и цель выполнена')),
+                  style: AppType.footnote.copyWith(color: c.text2)),
+            ]),
+          ),
+          const SizedBox(width: S.x3),
+          Column(children: [
+            _Pulse(active: st.streak > 0, child: Text('🔥', style: TextStyle(fontSize: 38, color: st.streak > 0 ? null : c.text3))),
+            Text('${st.streak}', style: AppType.title3.copyWith(color: st.streak > 0 ? const Color(0xFFFF8A00) : c.text3, height: 1.0)),
+          ]),
+        ]),
+        const SizedBox(height: S.x4),
+        Row(children: [
+          for (var i = 0; i < 7; i++)
+            Expanded(
+              child: Builder(builder: (_) {
+                final d = monday.add(Duration(days: i));
+                final on = lit(d), isToday = d == today;
+                return Column(children: [
+                  Text(s.tr(days[i]), style: AppType.caption.copyWith(color: isToday ? c.accentText : c.text3, fontWeight: isToday ? w8 : null)),
+                  const SizedBox(height: 6),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 400),
+                    width: 34,
+                    height: 34,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: on ? const LinearGradient(colors: [Color(0xFFFFB347), Color(0xFFFF6A00)]) : null,
+                      color: on ? null : c.surfaceAlt,
+                      border: isToday ? Border.all(color: c.accent, width: 2) : null,
+                      boxShadow: on ? const [BoxShadow(color: Color(0x55FF8A00), blurRadius: 10)] : null,
+                    ),
+                    child: on
+                        ? const Icon(Icons.local_fire_department_rounded, color: kWhite, size: 18)
+                        : Text('${d.day}', style: AppType.caption.copyWith(color: c.text3)),
+                  ),
+                ]);
+              }),
+            ),
+        ]),
+      ]),
+    );
+  }
+}
+
+class _RingPainter extends CustomPainter {
+  final double v;
+  final Color track;
+  final List<Color> colors;
+  _RingPainter(this.v, this.track, this.colors);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const w = 9.0;
+    final r = Rect.fromLTWH(w / 2, w / 2, size.width - w, size.height - w);
+    canvas.drawArc(r, 0, math.pi * 2, false, Paint()..style = PaintingStyle.stroke..strokeWidth = w..color = track);
+    if (v <= 0) return;
+    final p = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = w
+      ..strokeCap = StrokeCap.round
+      ..shader = SweepGradient(colors: colors, startAngle: -math.pi / 2, endAngle: math.pi * 1.5, transform: const GradientRotation(-math.pi / 2)).createShader(r);
+    canvas.drawArc(r, -math.pi / 2, math.pi * 2 * v, false, p);
+  }
+
+  @override
+  bool shouldRepaint(_RingPainter o) => o.v != v || o.track != track;
+}
+
+/// Yengil "nafas olish" / лёгкое «дыхание».
+class _Pulse extends StatefulWidget {
+  final Widget child;
+  final bool active;
+  const _Pulse({required this.child, this.active = true});
+  @override
+  State<_Pulse> createState() => _PulseState();
+}
+
+class _PulseState extends State<_Pulse> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400));
+  @override
+  void initState() {
+    super.initState();
+    _c.repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.active || Motion.reduced(context)) return widget.child;
+    return AnimatedBuilder(
+      animation: _c,
+      child: widget.child,
+      builder: (_, ch) {
+        final k = Curves.easeInOut.transform(_c.value);
+        return Transform.rotate(angle: (k - .5) * .12, child: Transform.scale(scale: 1 + .1 * k, child: ch));
+      },
+    );
+  }
+}
+
+// ------------------------------------------------------------ kunlik vazifalar chizig‘i / полоска заданий
+class _QuestStrip extends StatelessWidget {
+  const _QuestStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppScope.of(context);
+    final c = s.c, st = s.st;
+    const colors = [Color(0xFFFFB800), Color(0xFF2EA6FF), Color(0xFFFF6A00)];
+    const labels = [Tr('XP', 'XP'), Tr('dars', 'урока'), Tr('ketma-ket', 'подряд')];
+    return Pressable(
+      key: const ValueKey('quests-row'),
+      onTap: () => showAppSheet<void>(context, builder: (_) => const _Quests()),
+      scale: 0.98,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(S.x4, S.x4, S.x4, S.x4),
+        decoration: BoxDecoration(color: c.surface, borderRadius: R.all(R.xl), border: Border.all(color: c.hairline)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Text(s.t('quests'), style: AppType.headline.copyWith(color: c.text)),
+            const Spacer(),
+            Text('${st.quests.claimed.length}/${kQuests.length}', style: AppType.footnote.copyWith(color: c.text2, fontWeight: w7)),
+            Icon(Icons.chevron_right_rounded, color: c.text3),
+          ]),
+          const SizedBox(height: S.x3),
+          Row(children: [
+            for (var i = 0; i < kQuests.length; i++) ...[
+              if (i > 0) const SizedBox(width: S.x3),
+              Expanded(
+                child: Builder(builder: (_) {
+                  final q = kQuests[i];
+                  final prog = questProgress(st, q).clamp(0, q.target);
+                  final done = prog >= q.target;
+                  final col = colors[i % colors.length];
+                  return Container(
+                    padding: const EdgeInsets.all(S.x3),
+                    decoration: BoxDecoration(
+                      color: done ? col.withAlpha(0x26) : c.surfaceAlt,
+                      borderRadius: R.all(R.lg),
+                      border: Border.all(color: done ? col.withAlpha(0x99) : Colors.transparent, width: 1.5),
+                    ),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Row(children: [
+                        Icon(done ? Icons.check_circle_rounded : (kQuestIcons[q.id] ?? Icons.star_rounded), color: col, size: 22),
+                        const Spacer(),
+                        Text('+${q.reward}', style: AppType.caption.copyWith(color: c.text2, fontWeight: w7)),
+                      ]),
+                      const SizedBox(height: S.x2),
+                      Text('$prog/${q.target}', style: AppType.headline.copyWith(color: c.text)),
+                      Text(s.tr(labels[i % labels.length]), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.caption.copyWith(color: c.text2)),
+                      const SizedBox(height: S.x2),
+                      TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0, end: prog / q.target),
+                        duration: Duration(milliseconds: 700 + i * 200),
+                        curve: Curves.easeOutCubic,
+                        builder: (_, v, __) => AppProgress(v, height: 5, color: col, track: c.hairline),
+                      ),
+                    ]),
+                  );
+                }),
+              ),
+            ],
+          ]),
+        ]),
+      ),
+    );
+  }
+}
+
+// ------------------------------------------------------------ kun maslahati / совет дня
+const _kTips = [
+  Tr('HTML’da har bir ochilgan teg yopilishi kerak: <p> … </p>.', 'В HTML каждый открытый тег нужно закрыть: <p> … </p>.'),
+  Tr('CSS’da rang uchun #2EA6FF kabi kodlardan foydalanish mumkin.', 'В CSS цвет можно задать кодом, например #2EA6FF.'),
+  Tr('Python’da probellar muhim: if ichidagi qatorlar 4 ta probel bilan yoziladi.', 'В Python важны отступы: строки внутри if пишутся с 4 пробелами.'),
+  Tr('JavaScript’da console.log() — kod nima qilayotganini ko‘rishning eng oson yo‘li.', 'В JavaScript console.log() — самый простой способ увидеть, что делает код.'),
+  Tr('Xato — bu yomon emas. Har bir xato yangi narsani o‘rgatadi.', 'Ошибка — это не плохо. Каждая ошибка чему-то учит.'),
+  Tr('Har kuni 1 ta dars — bir oyda 30 ta dars. Seriyani uzmang!', 'Один урок в день — 30 уроков за месяц. Не прерывайте серию!'),
+  Tr('O‘zgaruvchiga tushunarli nom bering: x emas, yosh yoki narx.', 'Давайте переменным понятные имена: не x, а age или price.'),
+];
+
+class _TipCard extends StatelessWidget {
+  const _TipCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppScope.of(context);
+    final c = s.c;
+    final now = DateTime.now();
+    final idx = DateTime(now.year, now.month, now.day).difference(DateTime(now.year)).inDays % _kTips.length;
+    return Container(
+      padding: const EdgeInsets.all(S.x4),
+      decoration: BoxDecoration(
+        borderRadius: R.all(R.xl),
+        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [c.accentSoft, c.surface]),
+        border: Border.all(color: c.hairline),
+      ),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Floaty(amount: 3, child: Text('💡', style: TextStyle(fontSize: 30))),
+        const SizedBox(width: S.x3),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(s.tr(const Tr('Kun maslahati', 'Совет дня')), style: AppType.overline.copyWith(color: c.accentText, letterSpacing: 1.2)),
+            const SizedBox(height: 4),
+            Text(s.tr(_kTips[idx]), style: AppType.callout.copyWith(color: c.text)),
+          ]),
+        ),
+      ]),
     );
   }
 }
@@ -67,10 +347,38 @@ class _Continue extends StatelessWidget {
     final co = nx != null ? kAllLessons[nx.id]!.$2 : s.course;
     final goal = st.todayXp < kGoal ? st.todayXp : kGoal;
     final white70 = kWhite.withAlpha(0xD9);
+    final lessons = s.lessonsOf(co);
+    final idx = nx != null ? lessons.indexWhere((l) => l.id == nx.id) : -1;
     return Container(
       key: const ValueKey('continue-card'),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        borderRadius: R.all(R.xl),
+        gradient: c.heroGradient,
+        boxShadow: const [BoxShadow(color: Color(0x400A6CFF), blurRadius: 24, offset: Offset(0, 10))],
+      ),
+      child: Stack(children: [
+        // suzuvchi kod belgilari / плавающие символы кода
+        for (final (i, sym, x, y, sz) in const [
+          (0, '</>', .70, .05, 34.0),
+          (1, '{ }', .86, .42, 26.0),
+          (2, '( )', .58, .62, 22.0),
+          (3, ';', .93, .08, 28.0),
+          (4, '#', .48, .18, 20.0),
+        ])
+          Positioned.fill(
+            child: Align(
+              alignment: Alignment(x * 2 - 1, y * 2 - 1),
+              child: Floaty(
+                amount: 8,
+                phase: i * .19,
+                period: Duration(milliseconds: 3000 + i * 500),
+                child: Text(sym, style: AppType.monoStrong.copyWith(fontSize: sz, color: kWhite.withAlpha(0x2E))),
+              ),
+            ),
+          ),
+        Padding(
       padding: const EdgeInsets.all(S.x5),
-      decoration: BoxDecoration(borderRadius: R.all(R.xl), gradient: c.heroGradient),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Text('${co.tag}  ${s.tr(co.name)}'.toUpperCase(),
@@ -95,16 +403,76 @@ class _Continue extends StatelessWidget {
           child: Pressable(
             key: const ValueKey('continue-btn'),
             onTap: () => nx != null ? openLesson(context, nx.id) : s.go('courses'),
-            child: Container(
-              height: 50,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(color: kWhite, borderRadius: R.all(R.pill)),
-              child: Text(nx != null ? s.t('continue') : s.t('courses'),
-                  style: AppType.headline.copyWith(color: const Color(0xFF0058E6))),
+            child: _Shine(
+              child: Container(
+                height: 52,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(color: kWhite, borderRadius: R.all(R.pill)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text(nx != null ? s.t('continue') : s.t('courses'),
+                      style: AppType.headline.copyWith(color: const Color(0xFF0058E6))),
+                  const SizedBox(width: 6),
+                  const Icon(Icons.play_arrow_rounded, color: Color(0xFF0058E6)),
+                ]),
+              ),
             ),
           ),
         ),
+        if (idx >= 0) ...[
+          const SizedBox(height: S.x3),
+          Center(
+            child: Text(s.tr(Tr('${idx + 1}-dars · ${lessons.length} tadan', 'Урок ${idx + 1} из ${lessons.length}')),
+                style: AppType.caption.copyWith(color: white70)),
+          ),
+        ],
       ]),
+        ),
+      ]),
+    );
+  }
+}
+
+/// Tugma ustidan o‘tuvchi yaltirash / блик, пробегающий по кнопке.
+class _Shine extends StatefulWidget {
+  final Widget child;
+  const _Shine({required this.child});
+  @override
+  State<_Shine> createState() => _ShineState();
+}
+
+class _ShineState extends State<_Shine> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 3200));
+  @override
+  void initState() {
+    super.initState();
+    _c.repeat();
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (Motion.reduced(context)) return widget.child;
+    return AnimatedBuilder(
+      animation: _c,
+      child: widget.child,
+      builder: (_, ch) {
+        final t = (_c.value * 1.6 - .3);
+        return ShaderMask(
+          blendMode: BlendMode.srcATop,
+          shaderCallback: (r) => LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: const [Color(0x00FFFFFF), Color(0x66BFE3FF), Color(0x00FFFFFF)],
+            stops: [(t - .12).clamp(0.0, 1.0), t.clamp(0.0, 1.0), (t + .12).clamp(0.0, 1.0)],
+          ).createShader(r),
+          child: ch,
+        );
+      },
     );
   }
 }
