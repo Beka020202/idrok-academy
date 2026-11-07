@@ -278,7 +278,6 @@ class _LessonsTabState extends State<LessonsTab> {
   @override
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
-    final c = s.c;
     final admin = s.isAdmin;
     final course = _courseOf(_course);
     final rows = admin

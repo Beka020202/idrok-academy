@@ -261,6 +261,7 @@ void main() {
     state.pickCourse('html');
     await tapTab(tester, 'courses');
     await settle(tester, 900);
+    await tester.scrollUntilVisible(find.byKey(const ValueKey('exam-open')), 300, scrollable: find.byType(Scrollable).first);
     await tapKey(tester, const ValueKey('exam-open'));
     expect(find.text('Yakuniy imtihon'), findsWidgets);
     await tapKey(tester, const ValueKey('test-start'));

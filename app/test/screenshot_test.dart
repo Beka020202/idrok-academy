@@ -204,7 +204,7 @@ void main() {
     await tapKey(t, const ValueKey('lesson-back'));
 
     // Animatsiyalar / анимации
-    for (final id in ['html3', 'css4', 'css6', 'js4', 'py5', 'py6', 'ai2', 'ai3', 'aiA2']) {
+    for (final id in ['html3', 'html7', 'html9', 'css4', 'css6', 'css7', 'css8', 'js4', 'js8', 'py5', 'py6', 'py7', 'py8', 'ai2', 'ai3', 'aiA2']) {
       openLesson(state.navigatorKey.currentContext!, id);
       await settle(t, 900);
       await tapKey(t, const ValueKey('test-start'));
@@ -243,7 +243,7 @@ void main() {
     await shot(t, '${n++}-home-exam-ready');
     state.go('courses');
     await settle(t, 900);
-    await t.drag(find.byType(Scrollable).first, const Offset(0, -900));
+    await t.scrollUntilVisible(find.byKey(const ValueKey('exam-open')), 300, scrollable: find.byType(Scrollable).first);
     await settle(t, 900);
     await shot(t, '${n++}-courses-exam-card');
     await tapKey(t, const ValueKey('exam-open'));
@@ -288,6 +288,31 @@ void main() {
     await settle(t, 900);
     await tapKey(t, const ValueKey('lesson-html2'));
     await shot(t, '${n++}-lesson-gate-dark-ru');
+    await t.pump(const Duration(seconds: 4));
+
+    // Admin: darslar, muharrir, AI / админ: уроки, редактор, AI
+    state.navigatorKey.currentState!.popUntil((r) => r.isFirst);
+    state.toggleTheme();
+    state.toggleLang();
+    state.user = {'role': 'admin', 'username': 'ustoz', 'name': 'Admin', 'state': <String, dynamic>{}};
+    state.go('lessons');
+    await settle(t, 1200);
+    await shot(t, '${n++}-admin-lessons');
+    await tapKey(t, const ValueKey('les-row-html1'));
+    await settle(t, 1200);
+    await shot(t, '${n++}-admin-editor');
+    await t.scrollUntilVisible(find.byKey(const ValueKey('les-save')), 400, scrollable: find.byType(Scrollable).first);
+    await settle(t, 900);
+    await shot(t, '${n++}-admin-editor-steps');
+    state.navigatorKey.currentState!.popUntil((r) => r.isFirst);
+    await settle(t, 900);
+    await tapKey(t, const ValueKey('ai-make'));
+    await settle(t, 900);
+    await shot(t, '${n++}-admin-ai');
+    state.navigatorKey.currentState!.popUntil((r) => r.isFirst);
+    state.go('dash');
+    await settle(t, 1500);
+    await shot(t, '${n++}-admin-dash');
     await t.pump(const Duration(seconds: 4));
   }, skip: _dir == null);
 }

@@ -1,6 +1,5 @@
 // Qo‘shimcha darslar: HTML 7–9, CSS 7–9, JavaScript 7–9, Python 7–9.
 // Дополнительные уроки: HTML 7–9, CSS 7–9, JavaScript 7–9, Python 7–9.
-import 'anim.dart';
 import 'model.dart';
 
 const _names = ['Aziza', 'Bekzod', 'Laylo', 'Sardor', 'Madina', 'Jasur'];
