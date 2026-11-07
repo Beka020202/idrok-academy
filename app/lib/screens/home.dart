@@ -32,7 +32,6 @@ class HomeTab extends StatelessWidget {
     }
     final next = nl;
     final name = s.displayName.split(' ').first;
-    final questsDone = kQuests.where((q) => st.quests.claimed.contains(q.id)).length;
 
     final h = DateTime.now().hour;
     final greet = h < 5
@@ -111,7 +110,7 @@ class _TodayCard extends StatelessWidget {
           const SizedBox(width: S.x4),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(s.tr(goal >= 1 ? const Tr('Bugungi maqsad bajarildi! 🎉', 'Цель на сегодня выполнена! 🎉') : const Tr('Bugungi maqsad', 'Цель на сегодня')),
+              Text(s.tr(goal >= 1 ? const Tr('Maqsad bajarildi!', 'Цель выполнена!') : const Tr('Bugungi maqsad', 'Цель на сегодня')),
                   style: AppType.headline.copyWith(color: c.text)),
               const SizedBox(height: 4),
               Text(
@@ -123,7 +122,17 @@ class _TodayCard extends StatelessWidget {
           ),
           const SizedBox(width: S.x3),
           Column(children: [
-            _Pulse(active: st.streak > 0, child: Text('🔥', style: TextStyle(fontSize: 38, color: st.streak > 0 ? null : c.text3))),
+            _Pulse(
+              active: st.streak > 0,
+              child: st.streak > 0
+                  ? ShaderMask(
+                      blendMode: BlendMode.srcIn,
+                      shaderCallback: (r) => const LinearGradient(
+                          begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [Color(0xFFFF3B30), Color(0xFFFF9500), Color(0xFFFFD60A)]).createShader(r),
+                      child: const Icon(Icons.local_fire_department_rounded, size: 46, color: kWhite),
+                    )
+                  : Icon(Icons.local_fire_department_rounded, size: 46, color: c.text3),
+            ),
             Text('${st.streak}', style: AppType.title3.copyWith(color: st.streak > 0 ? const Color(0xFFFF8A00) : c.text3, height: 1.0)),
           ]),
         ]),
@@ -320,7 +329,15 @@ class _TipCard extends StatelessWidget {
         border: Border.all(color: c.hairline),
       ),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Floaty(amount: 3, child: Text('💡', style: TextStyle(fontSize: 30))),
+        Floaty(
+          amount: 3,
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: const BoxDecoration(shape: BoxShape.circle, gradient: LinearGradient(colors: [Color(0xFFFFE27A), Color(0xFFFFB800)])),
+            child: const Icon(Icons.lightbulb_rounded, color: kWhite, size: 26),
+          ),
+        ),
         const SizedBox(width: S.x3),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
