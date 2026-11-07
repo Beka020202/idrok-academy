@@ -1,0 +1,21 @@
+Analyzing app...                                                
+
+   info • Unnecessary braces in a string interpolation. Try removing the braces • lib/content/ai.dart:328:15 • unnecessary_brace_in_string_interps
+   info • Unnecessary braces in a string interpolation. Try removing the braces • lib/content/ai.dart:334:18 • unnecessary_brace_in_string_interps
+   info • Unnecessary use of string interpolation. Try replacing the string literal with the variable name • lib/content/more.dart:60:71 • unnecessary_string_interpolations
+   info • Unnecessary use of string interpolation. Try replacing the string literal with the variable name • lib/content/more.dart:612:102 • unnecessary_string_interpolations
+   info • Unnecessary use of string interpolation. Try replacing the string literal with the variable name • lib/content/more.dart:614:112 • unnecessary_string_interpolations
+   info • Unnecessary use of string interpolation. Try replacing the string literal with the variable name • lib/content/python.dart:90:24 • unnecessary_string_interpolations
+   info • The import of 'anim.dart' is unnecessary because all of the used elements are also provided by the import of 'model.dart'. Try removing the import directive • lib/content/scenes.dart:3:8 • unnecessary_import
+   info • The import of 'dart:typed_data' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/services.dart'. Try removing the import directive • lib/screens/certificate.dart:1:8 • unnecessary_import
+warning • The value of the local variable 'st' isn't used. Try removing the variable or using it • lib/screens/home.dart:25:11 • unused_local_variable
+warning • The '!' will have no effect because the receiver can't be null. Try removing the '!' operator • lib/screens/lesson.dart:1493:59 • unnecessary_non_null_assertion
+warning • The '!' will have no effect because the receiver can't be null. Try removing the '!' operator • lib/screens/lesson.dart:1495:56 • unnecessary_non_null_assertion
+warning • The '!' will have no effect because the receiver can't be null. Try removing the '!' operator • lib/screens/lesson.dart:1495:74 • unnecessary_non_null_assertion
+warning • The '!' will have no effect because the receiver can't be null. Try removing the '!' operator • lib/screens/lesson.dart:1503:63 • unnecessary_non_null_assertion
+warning • Unused import: '../lessons.dart'. Try removing the import directive • lib/screens/profile.dart:3:8 • unused_import
+   info • The import of 'dart:typed_data' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/services.dart'. Try removing the import directive • lib/screens/profile_form.dart:2:8 • unnecessary_import
+warning • Unused import: 'config.dart'. Try removing the import directive • lib/widgets.dart:15:8 • unused_import
+warning • The declaration '_GlowPainter' isn't referenced. Try removing the declaration of '_GlowPainter' • lib/widgets.dart:37:7 • unused_element
+
+17 issues found. (ran in 12.4s)
