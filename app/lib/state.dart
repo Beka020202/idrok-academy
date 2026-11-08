@@ -7,6 +7,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api.dart';
+import 'app_lock.dart';
 import 'config.dart';
 import 'i18n.dart';
 import 'lessons.dart';
@@ -600,6 +601,7 @@ class AppState extends ChangeNotifier {
   /// null — saqlab bo‘lmadi / не удалось сохранить.
   Future<LessonResult?> finishLesson(Lesson l,
       {required bool perfect, required int bestCombo, required int correct, required int total, required double timeShare}) async {
+    if (!l.local || l.source == 'school') AppLock.lessonDone();
     if (l.local) {
       // Maktab darsi yoki ko‘rib chiqish: XP yo‘q / урок школы или просмотр: без XP
       final first = l.source == 'school' && schoolDone.add(l.id);

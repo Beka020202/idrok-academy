@@ -16,6 +16,7 @@ import 'screens/reminder.dart';
 import 'screens/shop.dart';
 import 'screens/teacher.dart';
 import 'screens/teacher_tests.dart';
+import 'app_lock.dart';
 import 'screens/admin.dart';
 import 'screens/lessons_admin.dart';
 import 'state.dart';
@@ -178,6 +179,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) AppLock.check(context);
+    });
   }
 
   @override
@@ -188,6 +192,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) AppLock.check(context);
     // Ertasi kuni ochilsa — kunlik vazifalar yangilanadi.
     // Если приложение открыли на следующий день — обновляем задания дня.
     if (state == AppLifecycleState.resumed) {
