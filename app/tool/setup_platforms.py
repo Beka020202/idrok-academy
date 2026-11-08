@@ -382,7 +382,7 @@ APP_LOCK_XML = """<?xml version="1.0" encoding="utf-8"?>
 APP_LOCK_STRINGS = """<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_lock_label">Idrok Academy — fokus rejimi</string>
-    <string name="app_lock_desc">Bugungi dars o'tilmaguncha siz tanlagan ilovalarni (o'yinlar, ijtimoiy tarmoqlar) yopadi. Faqat qaysi ilova ochilganini ko'radi, ekrandagi matnni o'qimaydi.</string>
+    <string name="app_lock_desc">Bugungi dars o‘tilmaguncha siz tanlagan ilovalarni (o‘yinlar, ijtimoiy tarmoqlar) yopadi. Faqat qaysi ilova ochilganini ko‘radi, ekrandagi matnni o‘qimaydi.</string>
 </resources>
 """
 
