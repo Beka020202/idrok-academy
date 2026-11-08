@@ -1,0 +1,160 @@
+
+::group::⏭️ Skipped tests
+⏭️ /home/runner/work/idrok-academy/idrok-academy/app/test/screenshot_test.dart: screenshots (skipped)
+::endgroup::
+::group::✅ Passing tests
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data html1 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data html2 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data html3 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data html4 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data html5 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data html6 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data html7 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data html8 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data html9 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data css1 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data css2 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data css3 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data css4 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data css5 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data css6 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data css7 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data css8 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data css9 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data js1 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data js2 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data js3 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data js4 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data js5 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data js6 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data js7 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data js8 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data js9 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data py1 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data py2 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data py3 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data py4 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data py5 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data py6 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data py7 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data py8 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data py9 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data ai1 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data ai2 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data ai3 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data ai4 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data ai5 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data ai6 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data ai7 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data aiA1 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data aiA2 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data aiA3 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data aiA4 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data aiM1 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data aiM2 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data aiM3 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data aiM4 survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data quiz options are shuffled but the answer stays right
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data check uses must and out
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/data_lesson_test.dart: lessons as data server content overrides, hides and adds lessons
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: progress first lesson gives XP and starts streak
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: progress review gives 5 XP; streak grows next day
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: progress streak resets after a missed day
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: progress quests can be claimed once and pay XP
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: progress spending XP lowers balance but never total earned
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: progress league is set once by the warm-up
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: progress cancelled test makes the next try harder; finishing resets it
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: progress state survives JSON round trip
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: placement warm-up has 8 questions from easy to hard
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: placement warm-up questions are valid for many seeds
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: placement leagues from points
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons catalog matches the server list
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons shop lists are identical in app and server
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons every league has lessons in every course
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons similar lessons give similar XP in every league
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson html1 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson html2 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson html3 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson html4 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson html5 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson html6 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson html7 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson html8 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson html9 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson css1 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson css2 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson css3 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson css4 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson css5 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson css6 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson css7 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson css8 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson css9 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson js1 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson js2 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson js3 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson js4 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson js5 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson js6 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson js7 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson js8 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson js9 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson py1 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson py2 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson py3 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson py4 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson py5 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson py6 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson py7 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson py8 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson py9 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson ai1 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson ai2 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson ai3 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson ai4 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson ai5 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson ai6 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson ai7 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson aiA1 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson aiA2 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson aiA3 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson aiA4 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson aiM1 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson aiM2 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson aiM3 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons lesson aiM4 builds valid steps
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons each attempt gets different questions
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: lessons generator is deterministic for a seed
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: schools every region has districts and unique names
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: schools school names are always written the same way
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: animations every lesson has a valid animation step
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: animations loop animation computes the right sum
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: portfolio project for html: starter fails, a real solution passes
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: portfolio project for css: starter fails, a real solution passes
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: portfolio project for js: starter fails, a real solution passes
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: portfolio project for py: starter fails, a real solution passes
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: portfolio project for ai: starter fails, a real solution passes
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: offline python practice turns into a normal question without the server
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: timers and helper harder questions get more time, beginners get extra
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: timers and helper code issues are found
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: exam exam for html / beginner has enough unique answerable questions
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: exam exam for html / advanced has enough unique answerable questions
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: exam exam for html / master has enough unique answerable questions
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: exam exam for css / beginner has enough unique answerable questions
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: exam exam for css / advanced has enough unique answerable questions
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: exam exam for css / master has enough unique answerable questions
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: exam exam for js / beginner has enough unique answerable questions
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: exam exam for js / advanced has enough unique answerable questions
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: exam exam for js / master has enough unique answerable questions
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: exam exam for py / beginner has enough unique answerable questions
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: exam exam for py / advanced has enough unique answerable questions
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: exam exam for py / master has enough unique answerable questions
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: exam exam for ai / beginner has enough unique answerable questions
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: exam exam for ai / advanced has enough unique answerable questions
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: exam exam for ai / master has enough unique answerable questions
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: exam score and pass mark
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/logic_test.dart: exam certificate JSON round trip and PDF
+✅ /home/runner/work/idrok-academy/idrok-academy/app/test/widget_test.dart: offline: profile, warm-up, tabs, lesson, helper, cancel, shop
+::endgroup::
+
+🎉 152 tests passed, 1 skipped.
