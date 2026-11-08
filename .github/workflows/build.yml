@@ -121,14 +121,17 @@ jobs:
           PY
       - name: Web yig‘ish / сборка web
         run: flutter build web --release --base-href "/${{ github.event.repository.name }}/"
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
+          name: web-build
           path: app/build/web
 
-  # Faqat main: https://<owner>.github.io/<repo>/
+  # Faqat main: sayt + APK bitta joyda (github.io O‘zbekistonda ochiladi).
+  # Только main: сайт + APK в одном месте (github.io открывается в Узбекистане).
+  # https://<owner>.github.io/<repo>/  ·  .../Idrok-Academy.apk
   web-deploy:
     if: github.ref == 'refs/heads/main'
-    needs: web
+    needs: [web, android]
     runs-on: ubuntu-latest
     permissions:
       pages: write
@@ -137,6 +140,18 @@ jobs:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: site
+      - uses: actions/download-artifact@v4
+        with:
+          name: kodla-android
+          path: apk
+      - run: cp apk/app-release.apk site/Idrok-Academy.apk && ls -la site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
       - uses: actions/deploy-pages@v4
         id: deploy
 
