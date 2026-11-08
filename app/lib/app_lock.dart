@@ -24,7 +24,10 @@ class AppLock {
   static const _ch = MethodChannel('idrok/applock');
   static const passMinutes = 10, passPerDay = 2;
 
-  static bool get supported => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+  // Vaqtincha o‘chiq: Play Protect maxsus imkoniyatlar xizmatli APK ni o‘rnatishga qo‘ymaydi.
+  // Временно выключено: Play Protect не даёт установить APK со службой спец. возможностей.
+  static const enabledBuild = false;
+  static bool get supported => enabledBuild && !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
   static String _day(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';

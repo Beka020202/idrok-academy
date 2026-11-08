@@ -387,6 +387,9 @@ APP_LOCK_STRINGS = """<?xml version="1.0" encoding="utf-8"?>
 """
 
 
+FOCUS_ACCESSIBILITY = False
+
+
 def patch_applock(root=APP):
     """Fokus rejimi (Android maxsus imkoniyatlar xizmati) / режим фокуса (служба спец. возможностей)."""
     main = root / "android" / "app" / "src" / "main"
@@ -403,7 +406,9 @@ def patch_applock(root=APP):
     (main / "res" / "values" / "app_lock_strings.xml").write_text(APP_LOCK_STRINGS, encoding="utf-8")
     manifest = main / "AndroidManifest.xml"
     xml = manifest.read_text(encoding="utf-8")
-    if "AppLockService" not in xml:
+    # Vaqtincha o‘chirilgan: Play Protect maxsus imkoniyatlar xizmatli APK ni bloklaydi.
+    # Временно выключено: Play Protect блокирует APK со службой спец. возможностей.
+    if FOCUS_ACCESSIBILITY and "AppLockService" not in xml:
         svc = ('\n        <service android:name=".AppLockService" android:exported="true"\n'
                '            android:label="@string/app_lock_label"\n'
                '            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">\n'
