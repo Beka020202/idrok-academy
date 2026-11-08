@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
@@ -38,7 +39,9 @@ class _IntroVideoState extends State<IntroVideo> {
       await _c.initialize();
       if (!mounted) return;
       _c.addListener(_onTick);
-      await _c.setVolume(1.0);
+      // Brauzer ovozli videoni o‘zi boshlashga ruxsat bermaydi — ovozsiz boshlaymiz.
+      // Браузер не даёт автозапуск со звуком — запускаем без звука.
+      await _c.setVolume(kIsWeb ? 0 : 1.0);
       await _c.play();
       setState(() {});
     } catch (_) {
