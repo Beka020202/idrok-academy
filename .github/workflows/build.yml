@@ -111,11 +111,14 @@ jobs:
                    description='Dasturlashni o‘yin orqali o‘rganing')
           json.dump(m, open('web/manifest.json', 'w'), ensure_ascii=False, indent=2)
           PY
-          convert assets/icon/icon.png -resize 32x32 web/favicon.png
-          convert assets/icon/icon.png -resize 192x192 web/icons/Icon-192.png
-          convert assets/icon/icon.png -resize 512x512 web/icons/Icon-512.png
-          cp web/icons/Icon-192.png web/icons/Icon-maskable-192.png
-          cp web/icons/Icon-512.png web/icons/Icon-maskable-512.png
+          pip install --quiet pillow
+          python3 - <<'PY'
+          from PIL import Image
+          im = Image.open('assets/icon/icon.png').convert('RGBA')
+          for path, n in [('web/favicon.png', 32), ('web/icons/Icon-192.png', 192), ('web/icons/Icon-512.png', 512),
+                          ('web/icons/Icon-maskable-192.png', 192), ('web/icons/Icon-maskable-512.png', 512)]:
+              im.resize((n, n), Image.LANCZOS).save(path)
+          PY
       - name: Web yig‘ish / сборка web
         run: flutter build web --release --base-href "/${{ github.event.repository.name }}/"
       - uses: actions/upload-pages-artifact@v3
