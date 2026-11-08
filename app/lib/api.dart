@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
@@ -53,13 +52,12 @@ class Api {
       r = await f.timeout(timeout ?? kRequestTimeout);
     } on TimeoutException {
       throw const ApiError('conn');
-    } on SocketException {
-      throw const ApiError('conn');
-    } on HandshakeException {
-      throw const ApiError('conn');
     } on http.ClientException {
       throw const ApiError('conn');
     } on ArgumentError {
+      throw const ApiError('conn');
+    } on Exception {
+      // tarmoq xatosi (telefon va brauzer) / сетевая ошибка (телефон и браузер)
       throw const ApiError('conn');
     }
     Object? body;

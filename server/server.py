@@ -552,6 +552,19 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         print(f"  {self.address_string()}  {self.command} {self.path.split('?')[0]}  →  {args[1] if len(args) > 1 else ''}")
 
+    def end_headers(self):
+        # Brauzer versiyasi uchun (boshqa domendan so‘rov) / для веб-версии (запросы с другого домена)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Max-Age", "86400")
+        super().end_headers()
+
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
     def send_json(self, status, data):
         body = json.dumps(data, ensure_ascii=False).encode()
         self.send_response(status)

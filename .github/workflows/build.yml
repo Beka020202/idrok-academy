@@ -81,6 +81,62 @@ jobs:
           git add -A && git -c user.name=ci -c user.email=ci@localhost commit -qm "android logs ${{ github.run_id }}"
           git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" HEAD:ci-logs-android
 
+
+  # ---------------------------------------------------------------- brauzer versiyasi / веб-версия
+  web:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    defaults:
+      run:
+        working-directory: app
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Web papkasini yaratish / создать папку web
+        run: |
+          flutter create --platforms=web --project-name kodla . >/dev/null
+          sed -i 's#<title>.*</title>#<title>Idrok Academy</title>#' web/index.html
+          sed -i 's#content="A new Flutter project."#content="Idrok Academy — dasturlashni o‘yin orqali o‘rganing"#' web/index.html
+          python3 - <<'PY'
+          import json
+          m = json.load(open('web/manifest.json'))
+          m.update(name='Idrok Academy', short_name='Idrok', background_color='#F5F7FB', theme_color='#0A6CFF',
+                   description='Dasturlashni o‘yin orqali o‘rganing')
+          json.dump(m, open('web/manifest.json', 'w'), ensure_ascii=False, indent=2)
+          PY
+          convert assets/icon/icon.png -resize 32x32 web/favicon.png
+          convert assets/icon/icon.png -resize 192x192 web/icons/Icon-192.png
+          convert assets/icon/icon.png -resize 512x512 web/icons/Icon-512.png
+          cp web/icons/Icon-192.png web/icons/Icon-maskable-192.png
+          cp web/icons/Icon-512.png web/icons/Icon-maskable-512.png
+      - name: Web yig‘ish / сборка web
+        run: flutter build web --release --base-href "/${{ github.event.repository.name }}/"
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: app/build/web
+
+  # Faqat main: https://<owner>.github.io/<repo>/
+  web-deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: web
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deploy
+
   ios:
     # iPhone uchun kod kompilyatsiya bo‘lishini tekshiradi (imzosiz).
     # Проверяет, что код собирается для iPhone (без подписи).
