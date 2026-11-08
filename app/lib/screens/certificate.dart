@@ -110,12 +110,6 @@ Future<Uint8List> buildCertificatePdf(CertText t, CertFonts f) {
           ),
         ),
       ),
-      if (logo != null)
-        pw.Positioned(
-          right: 150,
-          top: 70,
-          child: pw.Opacity(opacity: 0.07, child: pw.Image(logo, width: 250, height: 250)),
-        ),
       pw.Positioned(
         left: 50,
         top: 24,
@@ -220,11 +214,6 @@ class CertificateView extends StatelessWidget {
                         gradient: LinearGradient(
                             begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [_sky, _blue, _navy])),
                   ),
-                ),
-                Positioned(
-                  right: 150,
-                  top: 70,
-                  child: Opacity(opacity: 0.07, child: Image.asset(kCertLogo, width: 250, height: 250)),
                 ),
                 Positioned(
                   left: 50,
